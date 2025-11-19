@@ -6,7 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an MCP (Model Context Protocol) server that manages isolated git worktrees for AI coding agents. It allows each agent (Copilot, Claude, GPT, Gemini, etc.) to work in their own worktree, run tests in isolation, and merge approved changes back to the main branch.
 
-**Current Status**: Core vertical slice implemented - domain layer, application layer (CreateWorktreeUseCase), and infrastructure layer (GitClient, InMemoryRepository) are complete with comprehensive test coverage. MCP server adapters and additional use cases are in progress.
 
 ## Architecture
 
