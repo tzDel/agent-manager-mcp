@@ -85,13 +85,13 @@ cmd/
 - Use descriptive test names that clearly describe the scenario being tested
 - Every test function MUST contain explicit comment blocks:
   ```go
-  // Arrange
+  // arrange
   // ... setup code
 
-  // Act
+  // act
   // ... execution code
 
-  // Assert
+  // assert
   // ... verification code
   ```
 - Follow table-driven test patterns for multiple scenarios
