@@ -14,31 +14,49 @@ import (
 )
 
 func main() {
-	var repoRoot string
-	flag.StringVar(&repoRoot, "repo", "", "path to git repository (defaults to current directory)")
+	repositoryPath := parseRepositoryPath()
+	server := initializeMCPServer(repositoryPath)
+	startMCPServer(server, repositoryPath)
+}
+
+func parseRepositoryPath() string {
+	var repositoryPath string
+	flag.StringVar(&repositoryPath, "repo", "", "path to git repository (defaults to current directory)")
 	flag.Parse()
 
-	if repoRoot == "" {
-		cwd, err := os.Getwd()
-		if err != nil {
-			log.Fatalf("failed to get current directory: %v", err)
-		}
-		repoRoot = cwd
+	if repositoryPath == "" {
+		return resolveCurrentWorkingDirectory()
 	}
 
-	gitClient := git.NewClient(repoRoot)
+	return repositoryPath
+}
+
+func resolveCurrentWorkingDirectory() string {
+	currentWorkingDirectory, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("failed to resolve current working directory: %v", err)
+	}
+	return currentWorkingDirectory
+}
+
+func initializeMCPServer(repositoryPath string) *mcp.MCPServer {
+	gitOperations := git.NewClient(repositoryPath)
 	agentRepository := persistence.NewInMemoryAgentRepository()
-	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repoRoot)
+	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitOperations, agentRepository, repositoryPath)
 
 	server, err := mcp.NewMCPServer(createWorktreeUseCase)
 	if err != nil {
-		log.Fatalf("failed to create MCP server: %v", err)
+		log.Fatalf("failed to initialize MCP server: %v", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "Starting MCP server for repository: %s\n", repoRoot)
+	return server
+}
 
-	ctx := context.Background()
-	if err := server.Run(ctx); err != nil {
-		log.Fatalf("MCP server error: %v", err)
+func startMCPServer(server *mcp.MCPServer, repositoryPath string) {
+	fmt.Fprintf(os.Stderr, "Starting MCP server for repository: %s\n", repositoryPath)
+
+	serverContext := context.Background()
+	if err := server.Run(serverContext); err != nil {
+		log.Fatalf("MCP server terminated with error: %v", err)
 	}
 }
