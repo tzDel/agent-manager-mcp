@@ -14,21 +14,21 @@ import (
 )
 
 func initializeGitRepo(repositoryPath string) error {
-	cmd := exec.Command("git", "init")
-	cmd.Dir = repositoryPath
-	return cmd.Run()
+	gitInitCommand := exec.Command("git", "init")
+	gitInitCommand.Dir = repositoryPath
+	return gitInitCommand.Run()
 }
 
 func configureGitUser(repositoryPath string) error {
-	nameCmd := exec.Command("git", "config", "user.name", "Test User")
-	nameCmd.Dir = repositoryPath
-	if err := nameCmd.Run(); err != nil {
+	gitConfigNameCommand := exec.Command("git", "config", "user.name", "Test User")
+	gitConfigNameCommand.Dir = repositoryPath
+	if err := gitConfigNameCommand.Run(); err != nil {
 		return err
 	}
 
-	emailCmd := exec.Command("git", "config", "user.email", "test@example.com")
-	emailCmd.Dir = repositoryPath
-	return emailCmd.Run()
+	gitConfigEmailCommand := exec.Command("git", "config", "user.email", "test@example.com")
+	gitConfigEmailCommand.Dir = repositoryPath
+	return gitConfigEmailCommand.Run()
 }
 
 func createAndCommitFile(repositoryPath, filename, content string) error {
@@ -37,15 +37,15 @@ func createAndCommitFile(repositoryPath, filename, content string) error {
 		return err
 	}
 
-	addCmd := exec.Command("git", "add", filename)
-	addCmd.Dir = repositoryPath
-	if err := addCmd.Run(); err != nil {
+	gitAddCommand := exec.Command("git", "add", filename)
+	gitAddCommand.Dir = repositoryPath
+	if err := gitAddCommand.Run(); err != nil {
 		return err
 	}
 
-	commitCmd := exec.Command("git", "commit", "-m", "Initial commit")
-	commitCmd.Dir = repositoryPath
-	return commitCmd.Run()
+	gitCommitCommand := exec.Command("git", "commit", "-m", "Initial commit")
+	gitCommitCommand.Dir = repositoryPath
+	return gitCommitCommand.Run()
 }
 
 func setupTestRepo(t *testing.T) (string, func()) {
@@ -75,12 +75,12 @@ func setupTestRepo(t *testing.T) (string, func()) {
 
 func TestNewMCPServer_CreatesServerWithToolsRegistered(t *testing.T) {
 	// arrange
-	repoRoot, cleanup := setupTestRepo(t)
+	repositoryRoot, cleanup := setupTestRepo(t)
 	defer cleanup()
 
-	gitClient := git.NewClient(repoRoot)
-	agentRepo := persistence.NewInMemoryAgentRepository()
-	useCase := application.NewCreateWorktreeUseCase(gitClient, agentRepo, repoRoot)
+	gitClient := git.NewGitClient(repositoryRoot)
+	agentRepository := persistence.NewInMemoryAgentRepository()
+	useCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
 
 	// act
 	server, err := NewMCPServer(useCase)
@@ -99,12 +99,12 @@ func TestNewMCPServer_CreatesServerWithToolsRegistered(t *testing.T) {
 
 func TestCreateWorktreeToolHandler_ValidInput_ReturnsSuccess(t *testing.T) {
 	// arrange
-	repoRoot, cleanup := setupTestRepo(t)
+	repositoryRoot, cleanup := setupTestRepo(t)
 	defer cleanup()
 
-	gitClient := git.NewClient(repoRoot)
-	agentRepo := persistence.NewInMemoryAgentRepository()
-	useCase := application.NewCreateWorktreeUseCase(gitClient, agentRepo, repoRoot)
+	gitClient := git.NewGitClient(repositoryRoot)
+	agentRepository := persistence.NewInMemoryAgentRepository()
+	useCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
 
 	server, err := NewMCPServer(useCase)
 	if err != nil {
@@ -150,12 +150,12 @@ func TestCreateWorktreeToolHandler_ValidInput_ReturnsSuccess(t *testing.T) {
 
 func TestCreateWorktreeToolHandler_InvalidAgentID_ReturnsError(t *testing.T) {
 	// arrange
-	repoRoot, cleanup := setupTestRepo(t)
+	repositoryRoot, cleanup := setupTestRepo(t)
 	defer cleanup()
 
-	gitClient := git.NewClient(repoRoot)
-	agentRepo := persistence.NewInMemoryAgentRepository()
-	useCase := application.NewCreateWorktreeUseCase(gitClient, agentRepo, repoRoot)
+	gitClient := git.NewGitClient(repositoryRoot)
+	agentRepository := persistence.NewInMemoryAgentRepository()
+	useCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
 
 	server, err := NewMCPServer(useCase)
 	if err != nil {
@@ -181,12 +181,12 @@ func TestCreateWorktreeToolHandler_InvalidAgentID_ReturnsError(t *testing.T) {
 
 func TestCreateWorktreeToolHandler_DuplicateAgent_ReturnsError(t *testing.T) {
 	// arrange
-	repoRoot, cleanup := setupTestRepo(t)
+	repositoryRoot, cleanup := setupTestRepo(t)
 	defer cleanup()
 
-	gitClient := git.NewClient(repoRoot)
-	agentRepo := persistence.NewInMemoryAgentRepository()
-	useCase := application.NewCreateWorktreeUseCase(gitClient, agentRepo, repoRoot)
+	gitClient := git.NewGitClient(repositoryRoot)
+	agentRepository := persistence.NewInMemoryAgentRepository()
+	useCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
 
 	server, err := NewMCPServer(useCase)
 	if err != nil {
@@ -199,8 +199,8 @@ func TestCreateWorktreeToolHandler_DuplicateAgent_ReturnsError(t *testing.T) {
 	}
 
 	agentID, _ := domain.NewAgentID("copilot")
-	agent, _ := domain.NewAgent(agentID, filepath.Join(repoRoot, ".worktrees", "copilot"))
-	_ = agentRepo.Save(ctx, agent)
+	agent, _ := domain.NewAgent(agentID, filepath.Join(repositoryRoot, ".worktrees", "copilot"))
+	_ = agentRepository.Save(ctx, agent)
 
 	// act
 	result, _, err := server.handleCreateWorktree(ctx, nil, args)

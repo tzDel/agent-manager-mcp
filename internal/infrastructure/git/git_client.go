@@ -7,46 +7,65 @@ import (
 	"strings"
 )
 
-type Client struct {
-	repoRoot string
+type GitClient struct {
+	repositoryRoot string
 }
 
-func NewClient(repoRoot string) *Client {
-	return &Client{repoRoot: repoRoot}
+func NewGitClient(repositoryRoot string) *GitClient {
+	return &GitClient{repositoryRoot: repositoryRoot}
 }
 
-func (client *Client) CreateWorktree(ctx context.Context, worktreePath string, branchName string) error {
-	cmd := exec.CommandContext(ctx, "git", "worktree", "add", "-b", branchName, worktreePath)
-	cmd.Dir = client.repoRoot
+// executeGitCommand executes a git command in the repository root directory
+// and returns the combined output (stdout and stderr) along with any error
+func (gitClient *GitClient) executeGitCommand(ctx context.Context, args ...string) ([]byte, error) {
+	gitCommand := exec.CommandContext(ctx, "git", args...)
+	gitCommand.Dir = gitClient.repositoryRoot
 
-	output, err := cmd.CombinedOutput()
+	commandOutput, err := gitCommand.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("git worktree add failed: %w (output: %s)", err, string(output))
+		return commandOutput, fmt.Errorf("git command failed: %w (output: %s)", err, string(commandOutput))
+	}
+
+	return commandOutput, nil
+}
+
+// executeGitCommandWithOutput executes a git command and returns only stdout
+// Used for commands where we need to parse the output (like branch --list)
+func (gitClient *GitClient) executeGitCommandWithOutput(ctx context.Context, args ...string) ([]byte, error) {
+	gitCommand := exec.CommandContext(ctx, "git", args...)
+	gitCommand.Dir = gitClient.repositoryRoot
+
+	commandOutput, err := gitCommand.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git command failed: %w", err)
+	}
+
+	return commandOutput, nil
+}
+
+func (gitClient *GitClient) CreateWorktree(ctx context.Context, worktreePath string, branchName string) error {
+	_, err := gitClient.executeGitCommand(ctx, "worktree", "add", "-b", branchName, worktreePath)
+	if err != nil {
+		return fmt.Errorf("failed to create worktree: %w", err)
 	}
 
 	return nil
 }
 
-func (client *Client) RemoveWorktree(ctx context.Context, worktreePath string) error {
-	cmd := exec.CommandContext(ctx, "git", "worktree", "remove", worktreePath, "--force")
-	cmd.Dir = client.repoRoot
-
-	output, err := cmd.CombinedOutput()
+func (gitClient *GitClient) RemoveWorktree(ctx context.Context, worktreePath string) error {
+	_, err := gitClient.executeGitCommand(ctx, "worktree", "remove", worktreePath, "--force")
 	if err != nil {
-		return fmt.Errorf("git worktree remove failed: %w (output: %s)", err, string(output))
+		return fmt.Errorf("failed to remove worktree: %w", err)
 	}
 
 	return nil
 }
 
-func (client *Client) BranchExists(ctx context.Context, branchName string) (bool, error) {
-	cmd := exec.CommandContext(ctx, "git", "branch", "--list", branchName)
-	cmd.Dir = client.repoRoot
-
-	output, err := cmd.Output()
+func (gitClient *GitClient) BranchExists(ctx context.Context, branchName string) (bool, error) {
+	commandOutput, err := gitClient.executeGitCommandWithOutput(ctx, "branch", "--list", branchName)
 	if err != nil {
-		return false, fmt.Errorf("git branch --list failed: %w", err)
+		return false, fmt.Errorf("failed to check branch existence: %w", err)
 	}
 
-	return strings.TrimSpace(string(output)) != "", nil
+	return strings.TrimSpace(string(commandOutput)) != "", nil
 }

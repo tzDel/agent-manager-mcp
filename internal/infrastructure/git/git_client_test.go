@@ -11,58 +11,58 @@ import (
 func setupTestRepo(t *testing.T) (string, func()) {
 	t.Helper()
 
-	tmpDir := t.TempDir()
+	temporaryDirectory := t.TempDir()
 
-	cmd := exec.Command("git", "init")
-	cmd.Dir = tmpDir
-	if err := cmd.Run(); err != nil {
+	gitInitCommand := exec.Command("git", "init")
+	gitInitCommand.Dir = temporaryDirectory
+	if err := gitInitCommand.Run(); err != nil {
 		t.Fatalf("Failed to init git repo: %v", err)
 	}
 
-	cmd = exec.Command("git", "config", "user.name", "Test User")
-	cmd.Dir = tmpDir
-	cmd.Run()
+	gitConfigNameCommand := exec.Command("git", "config", "user.name", "Test User")
+	gitConfigNameCommand.Dir = temporaryDirectory
+	gitConfigNameCommand.Run()
 
-	cmd = exec.Command("git", "config", "user.email", "test@example.com")
-	cmd.Dir = tmpDir
-	cmd.Run()
+	gitConfigEmailCommand := exec.Command("git", "config", "user.email", "test@example.com")
+	gitConfigEmailCommand.Dir = temporaryDirectory
+	gitConfigEmailCommand.Run()
 
-	testFile := filepath.Join(tmpDir, "README.md")
-	if err := os.WriteFile(testFile, []byte("# Test Repo"), 0644); err != nil {
+	testFilePath := filepath.Join(temporaryDirectory, "README.md")
+	if err := os.WriteFile(testFilePath, []byte("# Test Repo"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	cmd = exec.Command("git", "add", "README.md")
-	cmd.Dir = tmpDir
-	if err := cmd.Run(); err != nil {
+	gitAddCommand := exec.Command("git", "add", "README.md")
+	gitAddCommand.Dir = temporaryDirectory
+	if err := gitAddCommand.Run(); err != nil {
 		t.Fatalf("Failed to add file: %v", err)
 	}
 
-	cmd = exec.Command("git", "commit", "-m", "Initial commit")
-	cmd.Dir = tmpDir
-	if err := cmd.Run(); err != nil {
+	gitCommitCommand := exec.Command("git", "commit", "-m", "Initial commit")
+	gitCommitCommand.Dir = temporaryDirectory
+	if err := gitCommitCommand.Run(); err != nil {
 		t.Fatalf("Failed to commit: %v", err)
 	}
 
 	cleanup := func() {
-		os.RemoveAll(tmpDir)
+		os.RemoveAll(temporaryDirectory)
 	}
 
-	return tmpDir, cleanup
+	return temporaryDirectory, cleanup
 }
 
-func TestClient_CreateWorktree(t *testing.T) {
+func TestGitClient_CreateWorktree(t *testing.T) {
 	// arrange
-	repoRoot, cleanup := setupTestRepo(t)
+	repositoryRoot, cleanup := setupTestRepo(t)
 	defer cleanup()
 
-	client := NewClient(repoRoot)
+	gitClient := NewGitClient(repositoryRoot)
 	ctx := context.Background()
-	worktreePath := filepath.Join(repoRoot, ".worktrees", "test-agent")
+	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "test-agent")
 	branchName := "agent-test"
 
 	// act
-	err := client.CreateWorktree(ctx, worktreePath, branchName)
+	err := gitClient.CreateWorktree(ctx, worktreePath, branchName)
 
 	// assert
 	if err != nil {
@@ -73,7 +73,7 @@ func TestClient_CreateWorktree(t *testing.T) {
 		t.Error("Worktree directory was not created")
 	}
 
-	exists, err := client.BranchExists(ctx, branchName)
+	exists, err := gitClient.BranchExists(ctx, branchName)
 	if err != nil {
 		t.Fatalf("BranchExists() error: %v", err)
 	}
@@ -82,20 +82,20 @@ func TestClient_CreateWorktree(t *testing.T) {
 	}
 }
 
-func TestClient_RemoveWorktree(t *testing.T) {
+func TestGitClient_RemoveWorktree(t *testing.T) {
 	// arrange
-	repoRoot, cleanup := setupTestRepo(t)
+	repositoryRoot, cleanup := setupTestRepo(t)
 	defer cleanup()
 
-	client := NewClient(repoRoot)
+	gitClient := NewGitClient(repositoryRoot)
 	ctx := context.Background()
-	worktreePath := filepath.Join(repoRoot, ".worktrees", "test-agent")
+	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "test-agent")
 	branchName := "agent-test"
 
-	client.CreateWorktree(ctx, worktreePath, branchName)
+	gitClient.CreateWorktree(ctx, worktreePath, branchName)
 
 	// act
-	err := client.RemoveWorktree(ctx, worktreePath)
+	err := gitClient.RemoveWorktree(ctx, worktreePath)
 
 	// assert
 	if err != nil {
@@ -107,16 +107,16 @@ func TestClient_RemoveWorktree(t *testing.T) {
 	}
 }
 
-func TestClient_BranchExists(t *testing.T) {
+func TestGitClient_BranchExists(t *testing.T) {
 	// arrange
-	repoRoot, cleanup := setupTestRepo(t)
+	repositoryRoot, cleanup := setupTestRepo(t)
 	defer cleanup()
 
-	client := NewClient(repoRoot)
+	gitClient := NewGitClient(repositoryRoot)
 	ctx := context.Background()
 
 	// act
-	exists, err := client.BranchExists(ctx, "nonexistent")
+	exists, err := gitClient.BranchExists(ctx, "nonexistent")
 
 	// assert
 	if err != nil {
@@ -127,12 +127,12 @@ func TestClient_BranchExists(t *testing.T) {
 	}
 
 	// arrange
-	worktreePath := filepath.Join(repoRoot, ".worktrees", "test-agent")
+	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "test-agent")
 	branchName := "agent-test"
-	client.CreateWorktree(ctx, worktreePath, branchName)
+	gitClient.CreateWorktree(ctx, worktreePath, branchName)
 
 	// act
-	exists, err = client.BranchExists(ctx, branchName)
+	exists, err = gitClient.BranchExists(ctx, branchName)
 
 	// assert
 	if err != nil {
