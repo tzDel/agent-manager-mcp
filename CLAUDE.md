@@ -1,13 +1,16 @@
-# CLAUDE.md
+# Agent Manager MCP - AI Agent Instructions
+
+**Service:** MCP Server (Model Context Protocol) <br>
+**Capabilities:** Git worktree isolation, agent lifecycle management, test execution, conflict-free merging <br>
+**Tech Stack:** Go, Clean Architecture, Git CLI, MCP SDK, YAML/JSON config
+
+---
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
 This is an MCP (Model Context Protocol) server that manages isolated git worktrees for AI coding agents. It allows each agent (Copilot, Claude, GPT, Gemini, etc.) to work in their own worktree, run tests in isolation, and merge approved changes back to the main branch.
-
-
-## Architecture
 
 ### Core Concepts
 
@@ -16,16 +19,36 @@ This is an MCP (Model Context Protocol) server that manages isolated git worktre
 3. **Test Execution**: Runs configurable test commands in isolated agent worktrees
 4. **Merge Control**: Merges agent branches back to base branch with conflict handling
 
-### Technology Stack
+---
 
-- **Language**: Go
-- **Architecture**: Clean Architecture with domain, application, and infrastructure layers
-- **Git Integration**: Shell out to `git` commands for worktrees, commits, merges
-- **Interface**: MCP server exposing tools + optional REST/HTTP endpoints for debugging
-- **Configuration**: File-based config (YAML/JSON) for repo path, base branch, test command
-- **State**: In-memory repository with plans for SQLite or file-based storage
+# 1) Guardrails and behavioral guidelines
 
-### Package Structure
+- **Test before commit:** Always run `go test ./...` before committing changes; all tests must pass
+- **Strict layer boundaries:** Domain layer has zero external dependencies; application depends only on domain interfaces; infrastructure implements domain interfaces
+- **Test coverage:** All new features require tests; follow TDD (Red-Green-Refactor) cycle
+- **Non-deterministic solutions PROHIBITED:** NO timeouts, delays, sleep, retry loops, or polling in application logic or test code (operational safeguards for CLI commands are acceptable)
+- **Code cleanup policy:** Remove unused code completely; no backwards-compatibility hacks (rename unused vars, re-export types, `// removed` comments)
+- **Readability first:** Use descriptive variable names (not abbreviations); prefer self-documenting code; add comments only to explain WHY (intent/rationale), not WHAT
+- **When in doubt:** Ask questions using AskUserQuestion tool; clarify architectural decisions before implementing
+
+## Working Directory (CRITICAL)
+
+**Your workspace is the active working directory. Do not leave it.**
+
+- Inspect `<env>` to determine your working directory and the current branch
+- If you are in a worktree (branch: `agent-manager-mcp/*`): edit all files here
+- If you are in the main repository (branch: `main`): make changes here directly
+- Do NOT infer or rely on parent paths from the directory structure
+- Do NOT switch directories with `cd` to other locations unless explicitly required
+
+❌ WRONG: `cd /inferred/path && command`
+✅ RIGHT: `command` (executed in the current directory)
+
+---
+
+# 2) Repository architecture summary
+
+## Package/Directory Structure
 
 ```
 internal/
@@ -61,114 +84,242 @@ cmd/
 - Infrastructure: Implements domain interfaces, depends on external libraries (outbound)
 - Flow: Adapters/Infrastructure → Application → Domain
 
+## External Dependencies
+
+- `github.com/modelcontextprotocol/go-sdk` - MCP server implementation and protocol handling
+- Git CLI - Worktree and branch operations via shell commands
+
+**Important:** Use `go mod tidy` to manage dependencies; never specify versions manually in imports
+
+## Clean Architecture Pattern
+
+**Flow:** MCP Client → Adapters (MCP Server) → Application (Use Cases) → Domain (Business Logic) → Infrastructure (Git, Persistence)
+
+**Key Points:**
+- **Adapters** (inbound) translate external protocols (MCP, REST) to use case calls
+- **Use Cases** (application layer) orchestrate domain logic and coordinate infrastructure
+- **Domain** contains pure business logic with no external dependencies
+- **Infrastructure** (outbound) implements domain interfaces (GitOperations, AgentRepository)
+- All dependencies point inward toward the domain layer
+- Configuration loaded at startup from YAML/JSON files
+
 ## Key Design Decisions
 
 1. **In-Memory State**: Current implementation uses in-memory storage; server restart loses all state
-2. **Manual Cleanup**: Worktrees and branches must be removed manually (no automatic cleanup)
-3. **Single Repository**: One configured repository per server instance
-4. **Local Merges**: Merges stay local; manual `git push` required to sync with remote
-5. **Simple Status Model**: Three agent status values (`created`, `merged`, `failed`)
-6. **Clean Architecture**: Strict layer separation (domain → application → infrastructure)
-7. **Value Objects**: AgentID enforces validation rules at domain level
+2. **Single Repository**: One configured repository per server instance
+3. **Local Merges**: Merges stay local; manual `git push` required to sync with remote
+4. **Simple Status Model**: Three agent status values (`created`, `merged`, `failed`)
+5. **Clean Architecture**: Strict layer separation (domain → application → infrastructure)
+6. **Value Objects**: AgentID enforces validation rules at domain level
 
-## Working Directory (CRITICAL)
+---
 
-**Your workspace is the active working directory. Do not leave it.**
+# 3) Coding guidelines and conventions
 
-- Inspect `<env>` to determine your working directory and the current branch
-- If you are in a worktree (branch: `agent-manager-mcp/*`): edit all files here
-- If you are in the main repository (branch: `main`): make changes here directly
-- Do NOT infer or rely on parent paths from the directory structure
-- Do NOT switch directories with `cd` to other locations unless explicitly required
+## Naming Conventions
 
-❌ WRONG: `cd /inferred/path && command`
-✅ RIGHT: `command` (executed in the current directory)
+Use descriptive names. Never use abbreviations!
 
-## Implementation Rules (CRITICAL)
+```go
+// ✅ GOOD (Descriptive names)
+agentRepository := NewInMemoryRepository()
+worktreePath := filepath.Join(baseDir, agent.ID())
+testCommand := config.TestCommand
 
-### Testing Code
+// ❌ BAD (Abbreviations)
+repo := NewInMemoryRepository()
+path := filepath.Join(baseDir, agent.ID())
+cmd := config.TestCommand
+```
 
-**Test Structure (MANDATORY)**
+**Exception:** Well-established conventions in limited scopes:
+- `i` in loops
+- `err` for errors
+- `ctx` for context.Context
+
+## Error Handling
+
+```go
+// ✅ GOOD (Contextual error handling)
+if err := gitOps.CreateWorktree(path); err != nil {
+    return fmt.Errorf("failed to create worktree for agent %s: %w", agentID, err)
+}
+
+// ❌ BAD (Empty or generic error handling)
+if err := gitOps.CreateWorktree(path); err != nil {
+    return err
+}
+```
+
+- NEVER use empty catch blocks
+- Always wrap errors with context using `fmt.Errorf` with `%w`
+- Provide actionable information in error messages
+
+## Comment Style
+
+- Do not use comments to narrate what changed or what is new
+- Prefer self-documenting code; only add comments when strictly necessary to explain WHY (intent/rationale), not WHAT
+- Keep any necessary comments concise and local to the logic they justify
+
+## Testing Patterns
+
+**Key Rules:**
 - Use descriptive test names that clearly describe the scenario being tested
-- Every test function MUST contain explicit comment blocks:
-  ```go
-  // arrange
-  // ... setup code
-
-  // act
-  // ... execution code
-
-  // assert
-  // ... verification code
-  ```
+- Every test function MUST contain explicit comment blocks: `// arrange`, `// act`, `// assert`
 - Follow table-driven test patterns for multiple scenarios
 - Use test helpers to reduce duplication in setup/teardown
-
-**Test Naming Convention**
 - Format: `Test{Component}_{Scenario}_{ExpectedBehavior}`
-- Examples:
-  - `TestAgentID_CreateWithInvalidFormat_ReturnsError`
-  - `TestCreateWorktreeUseCase_WhenAgentAlreadyExists_ReturnsError`
-  - `TestGitClient_CreateWorktree_CreatesDirectoryAndBranch`
 
-### Code Quality
+### Unit Tests
 
-**Non-Deterministic Solutions PROHIBITED**
-- NO timeouts, delays, sleep (e.g., `setTimeout`, `sleep`) in application logic or test code.
-  - This restriction does not apply to operational safeguards like wrapping long-running terminal commands
-    with a timeout to prevent the CLI from hanging during manual workflows.
-- NO retry loops, polling (especially `setInterval` for state sync!)
-- NO timing-based solutions
-- These approaches are unreliable, hard to maintain, and behave inconsistently across different environments
+**Test Naming Convention:**
+- `TestAgentID_CreateWithInvalidFormat_ReturnsError`
+- `TestCreateWorktreeUseCase_WhenAgentAlreadyExists_ReturnsError`
+- `TestGitClient_CreateWorktree_CreatesDirectoryAndBranch`
 
-**Error Handling (MANDATORY)**
-- NEVER use empty catch blocks
-- Always log with context
-- Provide actionable information
+**Test Structure:**
+```go
+func TestAgentID_CreateWithInvalidFormat_ReturnsError(t *testing.T) {
+    // arrange
+    invalidID := "invalid id with spaces"
 
-**Naming Conventions (MANDATORY)**
-- Use descriptive variable names, not abbreviations
-- Examples:
-  - ✅ `agentRepository`, `worktreePath`, `testCommand`
-  - ❌ `repo`, `path`, `cmd`
-- Exception: Well-established conventions in limited scopes (e.g., `i` in loops, `err` for errors, `ctx` for context)
-- Function names should clearly describe their action and intent
-- Type names should be self-explanatory without needing comments
+    // act
+    _, err := domain.NewAgentID(invalidID)
 
-### Comment Style (MANDATORY)
-- Do not use comments to narrate what changed or what is new.
-- Prefer self-documenting code; only add comments when strictly necessary to explain WHY (intent/rationale), not WHAT.
-- Keep any necessary comments concise and local to the logic they justify.
+    // assert
+    if err == nil {
+        t.Error("expected error for invalid agent ID format")
+    }
+}
+```
 
-## Development Workflow
+### Table-Driven Tests
 
-1. Make changes
-2. Run test suite
-3. Only commit when all checks pass
+```go
+func TestAgentID_Validation(t *testing.T) {
+    tests := []struct {
+        name    string
+        agentID string
+        wantErr bool
+    }{
+        {name: "valid agent ID", agentID: "copilot", wantErr: false},
+        {name: "invalid with spaces", agentID: "invalid id", wantErr: true},
+        {name: "invalid empty", agentID: "", wantErr: true},
+    }
 
-## Testing Requirements
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            // arrange
+            // (test case from table)
 
-### TDD (MANDATORY)
+            // act
+            _, err := domain.NewAgentID(tt.agentID)
+
+            // assert
+            if (err != nil) != tt.wantErr {
+                t.Errorf("NewAgentID() error = %v, wantErr %v", err, tt.wantErr)
+            }
+        })
+    }
+}
+```
+
+### TDD Workflow (MANDATORY)
+
 Always write tests first, before implementing features:
 1. **Red**: Write a failing test that describes the desired behavior
 2. **Green**: Write minimal code to make the test pass
 3. **Refactor**: Improve the implementation while keeping tests green
 
+**CRITICAL Rules:**
+- Test failures are NEVER unrelated - fix immediately
+- NEVER skip tests (no `.skip()` in Go, no `t.Skip()` unless external dependency unavailable)
+- Fix performance test failures (they indicate real issues)
+- After every code change, rerun the full validation suite and report "tests green" before handing work back
+
+---
+
+# 4) Build, test, and tooling conventions
+
+## Build Commands
+
+```bash
+# Run all tests
+go test ./...
+
+# Run tests with verbose output
+go test -v ./...
+
+# Run tests with coverage
+go test -cover ./...
+
+# Build the server
+go build -o bin/agent-manager-mcp ./cmd/server
+```
+
+more commands can be found in [Makefile](Makefile)
+
+## Testing Setup
+
+- **Go testing** for all unit and integration tests
+- Test files must be named `*_test.go`
+- Place tests in the same package as the code being tested
+- Use table-driven tests for multiple scenarios
+
+## Local Development
+
+```bash
+# Build and run the MCP server
+go run ./cmd/server/main.go
+
+# Run with configuration file (when implemented)
+go run ./cmd/server/main.go -config config.yaml
+```
+
+**Configuration:** Configuration will be loaded from YAML/JSON files specifying repository path, base branch, and test command
+
+---
+
+# 5) Security, secrets, and data handling
+
+- **No secrets in code:** All configuration (repository paths, branch names) stored in config files, never hardcoded
+- **No credentials in commits:** Git operations use local system credentials; never store authentication tokens in code or config
+- **Local operations only:** All git operations are local; no automatic push to remote (prevents accidental exposure)
+
+---
+
+# 6) Documentation and onboarding
+
+## Key Reference Files
+
+- **Project overview:** `README.md`
+- **Project vision:** `docs/concept.md`
+- **System architecture:** `docs/architecture.md`
+- **Implementation plans:** `docs/plans/`
+- **Domain interfaces:** `internal/domain/ports.go`
+- **Use cases:** `internal/application/`
+- **MCP server adapter:** `internal/adapters/mcp/server.go`
+- **Git operations:** `internal/infrastructure/git/git_client.go`
+- **Entry point:** `cmd/server/main.go`
+
+## Project Structure Overview
+
+- `internal/domain/` - Pure business logic with no external dependencies
+- `internal/application/` - Use cases that orchestrate domain logic
+- `internal/adapters/` - Inbound adapters translating external protocols to use cases
+- `internal/infrastructure/` - Outbound adapters implementing domain interfaces
+- `cmd/server/` - Application entry point and test harness
+
 ## Specification Writing Guidelines
 
 ### Technical Specs (MANDATORY)
+
 When creating specs for implementation agents:
 - **Focus**: Technical implementation details, architecture, code examples
 - **Requirements**: Clear dependencies, APIs, integration points
 - **Structure**: Components → Implementation → Configuration → Phases
 - **Omit**: Resource constraints, obvious details, verbose explanations
 - **Include**: Platform-specific APIs, code snippets, data flows, dependencies
-
-**CRITICAL Rules:**
-- Test failures are NEVER unrelated - fix immediately
-- NEVER skip tests (no `.skip()`, `xit()`)
-- Fix performance test failures (they indicate real issues)
-- After every code change, the responsible agent must rerun the full validation suite and report "tests green" before handing the work back. Only proceed with known failing tests when the user explicitly permits leaving the suite red for that task.
 
 ## Plan Files
 
