@@ -47,6 +47,7 @@ make help
 | `make test-race` | Run tests with race detector |
 | `make test-bench` | Run benchmark tests |
 | `make build` | Build the server binary |
+| `make build-exe` | Build Windows executable (.exe) |
 | `make run` | Run the server in development mode |
 | `make inspector` | Run server with MCP Inspector |
 | `make clean` | Clean build artifacts |
