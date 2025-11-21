@@ -25,5 +25,9 @@ go.work
 # Config (only example should be committed)
 config.yaml
 
+# Claude Code user-specific settings
+.claude/mcp.json
+.claude/*.local.json
+
 # Worktrees
 .worktrees/

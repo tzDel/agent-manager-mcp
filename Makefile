@@ -1,4 +1,4 @@
-.PHONY: build test run clean deps test-mcp test-cover test-race test-bench test-all test-layers test-script inspector help
+.PHONY: build build-exe test run clean deps test-mcp test-cover test-race test-bench test-all test-layers test-script inspector help
 
 help:
 	@echo "Available targets:"
@@ -10,6 +10,7 @@ help:
 	@echo "  make test-race     - Run tests with race detector"
 	@echo "  make test-bench    - Run benchmark tests"
 	@echo "  make build         - Build the server binary"
+	@echo "  make build-exe     - Build Windows executable (.exe)"
 	@echo "  make run           - Run the server in development mode"
 	@echo "  make inspector     - Run server with MCP Inspector"
 	@echo "  make clean         - Clean build artifacts"
@@ -19,6 +20,9 @@ deps:
 
 build:
 	go build -o bin/agent-manager-mcp ./cmd/server
+
+build-exe:
+	go build -o bin/agent-manager-mcp.exe ./cmd/server
 
 test:
 	go test -v ./...
