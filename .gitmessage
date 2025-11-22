@@ -1,0 +1,8 @@
+# <type>[optional scope]: <description>
+#
+# Types: feat, fix, docs, refactor, test, chore, perf
+#
+# Examples:
+#   feat: add merge conflict detection
+#   fix(git): handle worktree removal errors
+#   docs: update installation guide
