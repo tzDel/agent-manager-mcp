@@ -66,8 +66,8 @@ func setupTestRepoWithWorktree(t *testing.T) *testRepoWithWorktree {
 	repositoryRoot, cleanup := setupTestRepo(t)
 	gitClient := NewGitClient(repositoryRoot)
 	ctx := context.Background()
-	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "test-agent")
-	branchName := "agent-test"
+	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "test-session")
+	branchName := "session-test"
 
 	if err := gitClient.CreateWorktree(ctx, worktreePath, branchName); err != nil {
 		cleanup()
@@ -91,8 +91,8 @@ func TestGitClient_CreateWorktree(t *testing.T) {
 
 	gitClient := NewGitClient(repositoryRoot)
 	ctx := context.Background()
-	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "test-agent")
-	branchName := "agent-test"
+	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "test-session")
+	branchName := "session-test"
 
 	// act
 	err := gitClient.CreateWorktree(ctx, worktreePath, branchName)
@@ -174,8 +174,8 @@ func TestGitClient_BranchExists(t *testing.T) {
 	}
 
 	// arrange
-	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "test-agent")
-	branchName := "agent-test"
+	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "test-session")
+	branchName := "session-test"
 	gitClient.CreateWorktree(ctx, worktreePath, branchName)
 
 	// act

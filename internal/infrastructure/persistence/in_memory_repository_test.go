@@ -9,73 +9,73 @@ import (
 
 func TestInMemoryRepository_SaveAndFind(t *testing.T) {
 	// arrange
-	repository := NewInMemoryAgentRepository()
+	repository := NewInMemorySessionRepository()
 	ctx := context.Background()
-	agentID, _ := domain.NewAgentID("test-agent")
-	agent, _ := domain.NewAgent(agentID, "/path/to/worktree")
+	sessionID, _ := domain.NewSessionID("test-session")
+	session, _ := domain.NewSession(sessionID, "/path/to/worktree")
 
 	// act
-	err := repository.Save(ctx, agent)
+	err := repository.Save(ctx, session)
 	if err != nil {
 		t.Fatalf("Save() error: %v", err)
 	}
 
-	found, err := repository.FindByID(ctx, agentID)
+	found, err := repository.FindByID(ctx, sessionID)
 
 	// assert
 	if err != nil {
 		t.Fatalf("FindByID() error: %v", err)
 	}
 
-	if found.ID().String() != agent.ID().String() {
-		t.Errorf("FindByID() returned wrong agent")
+	if found.ID().String() != session.ID().String() {
+		t.Errorf("FindByID() returned wrong session")
 	}
 }
 
 func TestInMemoryRepository_FindByID_NotFound(t *testing.T) {
 	// arrange
-	repository := NewInMemoryAgentRepository()
+	repository := NewInMemorySessionRepository()
 	ctx := context.Background()
-	agentID, _ := domain.NewAgentID("nonexistent")
+	sessionID, _ := domain.NewSessionID("nonexistent")
 
 	// act
-	_, err := repository.FindByID(ctx, agentID)
+	_, err := repository.FindByID(ctx, sessionID)
 
 	// assert
 	if err == nil {
-		t.Error("FindByID() expected error for non-existent agent")
+		t.Error("FindByID() expected error for non-existent session")
 	}
 }
 
 func TestInMemoryRepository_Exists(t *testing.T) {
 	// arrange
-	repository := NewInMemoryAgentRepository()
+	repository := NewInMemorySessionRepository()
 	ctx := context.Background()
-	agentID, _ := domain.NewAgentID("test-agent")
+	sessionID, _ := domain.NewSessionID("test-session")
 
 	// act
-	exists, err := repository.Exists(ctx, agentID)
+	exists, err := repository.Exists(ctx, sessionID)
 
 	// assert
 	if err != nil {
 		t.Fatalf("Exists() error: %v", err)
 	}
 	if exists {
-		t.Error("Exists() returned true for non-existent agent")
+		t.Error("Exists() returned true for non-existent session")
 	}
 
 	// arrange
-	agent, _ := domain.NewAgent(agentID, "/path")
-	repository.Save(ctx, agent)
+	session, _ := domain.NewSession(sessionID, "/path")
+	repository.Save(ctx, session)
 
 	// act
-	exists, err = repository.Exists(ctx, agentID)
+	exists, err = repository.Exists(ctx, sessionID)
 
 	// assert
 	if err != nil {
 		t.Fatalf("Exists() error: %v", err)
 	}
 	if !exists {
-		t.Error("Exists() returned false for existing agent")
+		t.Error("Exists() returned false for existing session")
 	}
 }

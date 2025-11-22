@@ -79,9 +79,9 @@ func TestNewMCPServer_CreatesServerWithToolsRegistered(t *testing.T) {
 	defer cleanup()
 
 	gitClient := git.NewGitClient(repositoryRoot)
-	agentRepository := persistence.NewInMemoryAgentRepository()
-	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
-	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, agentRepository, "master")
+	sessionRepository := persistence.NewInMemorySessionRepository()
+	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, sessionRepository, repositoryRoot)
+	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, sessionRepository, "master")
 
 	// act
 	server, err := NewMCPServer(createWorktreeUseCase, removeWorktreeUseCase)
@@ -104,9 +104,9 @@ func TestCreateWorktreeToolHandler_ValidInput_ReturnsSuccess(t *testing.T) {
 	defer cleanup()
 
 	gitClient := git.NewGitClient(repositoryRoot)
-	agentRepository := persistence.NewInMemoryAgentRepository()
-	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
-	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, agentRepository, "master")
+	sessionRepository := persistence.NewInMemorySessionRepository()
+	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, sessionRepository, repositoryRoot)
+	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, sessionRepository, "master")
 
 	server, err := NewMCPServer(createWorktreeUseCase, removeWorktreeUseCase)
 	if err != nil {
@@ -115,7 +115,7 @@ func TestCreateWorktreeToolHandler_ValidInput_ReturnsSuccess(t *testing.T) {
 
 	ctx := context.Background()
 	args := CreateWorktreeArgs{
-		AgentID: "copilot",
+		SessionID: "copilot",
 	}
 
 	// act
@@ -139,26 +139,26 @@ func TestCreateWorktreeToolHandler_ValidInput_ReturnsSuccess(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected output to be CreateWorktreeOutput, got: %T", output)
 	}
-	if response.AgentID != "copilot" {
-		t.Errorf("expected agent ID 'copilot', got: %s", response.AgentID)
+	if response.SessionID != "copilot" {
+		t.Errorf("expected session ID 'copilot', got: %s", response.SessionID)
 	}
-	if response.BranchName != "agent-copilot" {
-		t.Errorf("expected branch name 'agent-copilot', got: %s", response.BranchName)
+	if response.BranchName != "session-copilot" {
+		t.Errorf("expected branch name 'session-copilot', got: %s", response.BranchName)
 	}
 	if response.Status != "created" {
 		t.Errorf("expected status 'created', got: %s", response.Status)
 	}
 }
 
-func TestCreateWorktreeToolHandler_InvalidAgentID_ReturnsError(t *testing.T) {
+func TestCreateWorktreeToolHandler_InvalidSessionID_ReturnsError(t *testing.T) {
 	// arrange
 	repositoryRoot, cleanup := setupTestRepo(t)
 	defer cleanup()
 
 	gitClient := git.NewGitClient(repositoryRoot)
-	agentRepository := persistence.NewInMemoryAgentRepository()
-	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
-	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, agentRepository, "master")
+	sessionRepository := persistence.NewInMemorySessionRepository()
+	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, sessionRepository, repositoryRoot)
+	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, sessionRepository, "master")
 
 	server, err := NewMCPServer(createWorktreeUseCase, removeWorktreeUseCase)
 	if err != nil {
@@ -167,7 +167,7 @@ func TestCreateWorktreeToolHandler_InvalidAgentID_ReturnsError(t *testing.T) {
 
 	ctx := context.Background()
 	args := CreateWorktreeArgs{
-		AgentID: "invalid agent id",
+		SessionID: "invalid session id",
 	}
 
 	// act
@@ -175,22 +175,22 @@ func TestCreateWorktreeToolHandler_InvalidAgentID_ReturnsError(t *testing.T) {
 
 	// assert
 	if err == nil {
-		t.Fatal("expected error for invalid agent ID")
+		t.Fatal("expected error for invalid session ID")
 	}
 	if result != nil && !result.IsError {
 		t.Error("expected IsError to be true")
 	}
 }
 
-func TestCreateWorktreeToolHandler_DuplicateAgent_ReturnsError(t *testing.T) {
+func TestCreateWorktreeToolHandler_DuplicateSession_ReturnsError(t *testing.T) {
 	// arrange
 	repositoryRoot, cleanup := setupTestRepo(t)
 	defer cleanup()
 
 	gitClient := git.NewGitClient(repositoryRoot)
-	agentRepository := persistence.NewInMemoryAgentRepository()
-	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
-	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, agentRepository, "master")
+	sessionRepository := persistence.NewInMemorySessionRepository()
+	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, sessionRepository, repositoryRoot)
+	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, sessionRepository, "master")
 
 	server, err := NewMCPServer(createWorktreeUseCase, removeWorktreeUseCase)
 	if err != nil {
@@ -199,19 +199,19 @@ func TestCreateWorktreeToolHandler_DuplicateAgent_ReturnsError(t *testing.T) {
 
 	ctx := context.Background()
 	args := CreateWorktreeArgs{
-		AgentID: "copilot",
+		SessionID: "copilot",
 	}
 
-	agentID, _ := domain.NewAgentID("copilot")
-	agent, _ := domain.NewAgent(agentID, filepath.Join(repositoryRoot, ".worktrees", "copilot"))
-	_ = agentRepository.Save(ctx, agent)
+	sessionID, _ := domain.NewSessionID("copilot")
+	session, _ := domain.NewSession(sessionID, filepath.Join(repositoryRoot, ".worktrees", "copilot"))
+	_ = sessionRepository.Save(ctx, session)
 
 	// act
 	result, _, err := server.handleCreateWorktree(ctx, nil, args)
 
 	// assert
 	if err == nil {
-		t.Fatal("expected error for duplicate agent")
+		t.Fatal("expected error for duplicate session")
 	}
 	if result != nil && !result.IsError {
 		t.Error("expected IsError to be true")
@@ -224,9 +224,9 @@ func TestRemoveWorktreeToolHandler_CleanWorktree_ReturnsSuccess(t *testing.T) {
 	defer cleanup()
 
 	gitClient := git.NewGitClient(repositoryRoot)
-	agentRepository := persistence.NewInMemoryAgentRepository()
-	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
-	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, agentRepository, "master")
+	sessionRepository := persistence.NewInMemorySessionRepository()
+	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, sessionRepository, repositoryRoot)
+	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, sessionRepository, "master")
 
 	server, err := NewMCPServer(createWorktreeUseCase, removeWorktreeUseCase)
 	if err != nil {
@@ -235,10 +235,10 @@ func TestRemoveWorktreeToolHandler_CleanWorktree_ReturnsSuccess(t *testing.T) {
 
 	ctx := context.Background()
 
-	createArgs := CreateWorktreeArgs{AgentID: "test-agent"}
+	createArgs := CreateWorktreeArgs{SessionID: "test-session"}
 	_, _, _ = server.handleCreateWorktree(ctx, nil, createArgs)
 
-	removeArgs := RemoveWorktreeArgs{AgentID: "test-agent", Force: false}
+	removeArgs := RemoveWorktreeArgs{SessionID: "test-session", Force: false}
 
 	// act
 	result, output, err := server.handleRemoveWorktree(ctx, nil, removeArgs)
@@ -258,8 +258,8 @@ func TestRemoveWorktreeToolHandler_CleanWorktree_ReturnsSuccess(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected output to be RemoveWorktreeOutput, got: %T", output)
 	}
-	if response.AgentID != "test-agent" {
-		t.Errorf("expected agent ID 'test-agent', got: %s", response.AgentID)
+	if response.SessionID != "test-session" {
+		t.Errorf("expected session ID 'test-session', got: %s", response.SessionID)
 	}
 	if response.HasUnmergedChanges {
 		t.Error("expected HasUnmergedChanges to be false")
@@ -275,9 +275,9 @@ func TestRemoveWorktreeToolHandler_WithUncommittedChanges_ReturnsWarning(t *test
 	defer cleanup()
 
 	gitClient := git.NewGitClient(repositoryRoot)
-	agentRepository := persistence.NewInMemoryAgentRepository()
-	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
-	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, agentRepository, "master")
+	sessionRepository := persistence.NewInMemorySessionRepository()
+	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, sessionRepository, repositoryRoot)
+	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, sessionRepository, "master")
 
 	server, err := NewMCPServer(createWorktreeUseCase, removeWorktreeUseCase)
 	if err != nil {
@@ -286,17 +286,17 @@ func TestRemoveWorktreeToolHandler_WithUncommittedChanges_ReturnsWarning(t *test
 
 	ctx := context.Background()
 
-	createArgs := CreateWorktreeArgs{AgentID: "test-agent"}
+	createArgs := CreateWorktreeArgs{SessionID: "test-session"}
 	createResult, _, _ := server.handleCreateWorktree(ctx, nil, createArgs)
 	if createResult.IsError {
 		t.Fatalf("failed to create worktree: %v", createResult.Content)
 	}
 
-	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "agent-test-agent")
+	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "session-test-session")
 	newFilePath := filepath.Join(worktreePath, "new-file.txt")
 	os.WriteFile(newFilePath, []byte("new content"), 0644)
 
-	removeArgs := RemoveWorktreeArgs{AgentID: "test-agent", Force: false}
+	removeArgs := RemoveWorktreeArgs{SessionID: "test-session", Force: false}
 
 	// act
 	result, output, err := server.handleRemoveWorktree(ctx, nil, removeArgs)
@@ -336,9 +336,9 @@ func TestRemoveWorktreeToolHandler_ForceRemoveWithChanges_ReturnsSuccess(t *test
 	defer cleanup()
 
 	gitClient := git.NewGitClient(repositoryRoot)
-	agentRepository := persistence.NewInMemoryAgentRepository()
-	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
-	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, agentRepository, "master")
+	sessionRepository := persistence.NewInMemorySessionRepository()
+	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, sessionRepository, repositoryRoot)
+	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, sessionRepository, "master")
 
 	server, err := NewMCPServer(createWorktreeUseCase, removeWorktreeUseCase)
 	if err != nil {
@@ -347,17 +347,17 @@ func TestRemoveWorktreeToolHandler_ForceRemoveWithChanges_ReturnsSuccess(t *test
 
 	ctx := context.Background()
 
-	createArgs := CreateWorktreeArgs{AgentID: "test-agent"}
+	createArgs := CreateWorktreeArgs{SessionID: "test-session"}
 	createResult, _, _ := server.handleCreateWorktree(ctx, nil, createArgs)
 	if createResult.IsError {
 		t.Fatalf("failed to create worktree: %v", createResult.Content)
 	}
 
-	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "agent-test-agent")
+	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "session-test-session")
 	newFilePath := filepath.Join(worktreePath, "new-file.txt")
 	os.WriteFile(newFilePath, []byte("new content"), 0644)
 
-	removeArgs := RemoveWorktreeArgs{AgentID: "test-agent", Force: true}
+	removeArgs := RemoveWorktreeArgs{SessionID: "test-session", Force: true}
 
 	// act
 	result, output, err := server.handleRemoveWorktree(ctx, nil, removeArgs)
@@ -389,15 +389,15 @@ func TestRemoveWorktreeToolHandler_ForceRemoveWithChanges_ReturnsSuccess(t *test
 	}
 }
 
-func TestRemoveWorktreeToolHandler_InvalidAgentID_ReturnsError(t *testing.T) {
+func TestRemoveWorktreeToolHandler_InvalidSessionID_ReturnsError(t *testing.T) {
 	// arrange
 	repositoryRoot, cleanup := setupTestRepo(t)
 	defer cleanup()
 
 	gitClient := git.NewGitClient(repositoryRoot)
-	agentRepository := persistence.NewInMemoryAgentRepository()
-	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
-	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, agentRepository, "master")
+	sessionRepository := persistence.NewInMemorySessionRepository()
+	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, sessionRepository, repositoryRoot)
+	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, sessionRepository, "master")
 
 	server, err := NewMCPServer(createWorktreeUseCase, removeWorktreeUseCase)
 	if err != nil {
@@ -405,29 +405,29 @@ func TestRemoveWorktreeToolHandler_InvalidAgentID_ReturnsError(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	args := RemoveWorktreeArgs{AgentID: "invalid agent id", Force: false}
+	args := RemoveWorktreeArgs{SessionID: "invalid session id", Force: false}
 
 	// act
 	result, _, err := server.handleRemoveWorktree(ctx, nil, args)
 
 	// assert
 	if err == nil {
-		t.Fatal("expected error for invalid agent ID")
+		t.Fatal("expected error for invalid session ID")
 	}
 	if result != nil && !result.IsError {
 		t.Error("expected IsError to be true")
 	}
 }
 
-func TestRemoveWorktreeToolHandler_NonexistentAgent_ReturnsError(t *testing.T) {
+func TestRemoveWorktreeToolHandler_NonexistentSession_ReturnsError(t *testing.T) {
 	// arrange
 	repositoryRoot, cleanup := setupTestRepo(t)
 	defer cleanup()
 
 	gitClient := git.NewGitClient(repositoryRoot)
-	agentRepository := persistence.NewInMemoryAgentRepository()
-	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, agentRepository, repositoryRoot)
-	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, agentRepository, "master")
+	sessionRepository := persistence.NewInMemorySessionRepository()
+	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitClient, sessionRepository, repositoryRoot)
+	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitClient, sessionRepository, "master")
 
 	server, err := NewMCPServer(createWorktreeUseCase, removeWorktreeUseCase)
 	if err != nil {
@@ -435,14 +435,14 @@ func TestRemoveWorktreeToolHandler_NonexistentAgent_ReturnsError(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	args := RemoveWorktreeArgs{AgentID: "nonexistent", Force: false}
+	args := RemoveWorktreeArgs{SessionID: "nonexistent", Force: false}
 
 	// act
 	result, _, err := server.handleRemoveWorktree(ctx, nil, args)
 
 	// assert
 	if err == nil {
-		t.Fatal("expected error for non-existent agent")
+		t.Fatal("expected error for non-existent session")
 	}
 	if result != nil && !result.IsError {
 		t.Error("expected IsError to be true")

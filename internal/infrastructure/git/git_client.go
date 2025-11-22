@@ -90,8 +90,8 @@ func (gitClient *GitClient) HasUncommittedChanges(ctx context.Context, worktreeP
 	return true, len(lines), nil
 }
 
-func (gitClient *GitClient) HasUnpushedCommits(ctx context.Context, baseBranch string, agentBranch string) (int, error) {
-	revRange := fmt.Sprintf("%s..%s", baseBranch, agentBranch)
+func (gitClient *GitClient) HasUnpushedCommits(ctx context.Context, baseBranch string, sessionBranch string) (int, error) {
+	revRange := fmt.Sprintf("%s..%s", baseBranch, sessionBranch)
 	commandOutput, err := gitClient.executeGitCommandWithOutput(ctx, "rev-list", revRange, "--count")
 	if err != nil {
 		return 0, fmt.Errorf("failed to count commits: %w", err)

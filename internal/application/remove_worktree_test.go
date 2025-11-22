@@ -8,12 +8,12 @@ import (
 	"github.com/tzDel/orchestrAIgent/internal/domain"
 )
 
-func TestRemoveWorktreeUseCase_Execute_AgentNotFound(t *testing.T) {
+func TestRemoveWorktreeUseCase_Execute_SessionNotFound(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, agentRepository, "main")
-	request := RemoveWorktreeRequest{AgentID: "nonexistent", Force: false}
+	sessionRepository := newMockSessionRepository()
+	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, sessionRepository, "main")
+	request := RemoveWorktreeRequest{SessionID: "nonexistent", Force: false}
 	ctx := context.Background()
 
 	// act
@@ -21,22 +21,22 @@ func TestRemoveWorktreeUseCase_Execute_AgentNotFound(t *testing.T) {
 
 	// assert
 	if err == nil {
-		t.Error("Execute() expected error for non-existent agent")
+		t.Error("Execute() expected error for non-existent session")
 	}
 }
 
-func TestRemoveWorktreeUseCase_Execute_AgentAlreadyRemoved(t *testing.T) {
+func TestRemoveWorktreeUseCase_Execute_SessionAlreadyRemoved(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, agentRepository, "main")
+	sessionRepository := newMockSessionRepository()
+	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, sessionRepository, "main")
 
-	agentID, _ := domain.NewAgentID("test-agent")
-	agent, _ := domain.NewAgent(agentID, "/path")
-	agent.MarkRemoved()
-	agentRepository.Save(context.Background(), agent)
+	sessionID, _ := domain.NewSessionID("test-session")
+	session, _ := domain.NewSession(sessionID, "/path")
+	session.MarkRemoved()
+	sessionRepository.Save(context.Background(), session)
 
-	request := RemoveWorktreeRequest{AgentID: "test-agent", Force: false}
+	request := RemoveWorktreeRequest{SessionID: "test-session", Force: false}
 	ctx := context.Background()
 
 	// act
@@ -44,7 +44,7 @@ func TestRemoveWorktreeUseCase_Execute_AgentAlreadyRemoved(t *testing.T) {
 
 	// assert
 	if err == nil {
-		t.Error("Execute() expected error for already removed agent")
+		t.Error("Execute() expected error for already removed session")
 	}
 }
 
@@ -54,18 +54,18 @@ func TestRemoveWorktreeUseCase_Execute_UncommittedChangesWithoutForce(t *testing
 		hasUncommittedChangesFunc: func(ctx context.Context, worktreePath string) (bool, int, error) {
 			return true, 3, nil
 		},
-		hasUnpushedCommitsFunc: func(ctx context.Context, baseBranch string, agentBranch string) (int, error) {
+		hasUnpushedCommitsFunc: func(ctx context.Context, baseBranch string, sessionBranch string) (int, error) {
 			return 0, nil
 		},
 	}
-	agentRepository := newMockAgentRepository()
-	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, agentRepository, "main")
+	sessionRepository := newMockSessionRepository()
+	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, sessionRepository, "main")
 
-	agentID, _ := domain.NewAgentID("test-agent")
-	agent, _ := domain.NewAgent(agentID, "/path")
-	agentRepository.Save(context.Background(), agent)
+	sessionID, _ := domain.NewSessionID("test-session")
+	session, _ := domain.NewSession(sessionID, "/path")
+	sessionRepository.Save(context.Background(), session)
 
-	request := RemoveWorktreeRequest{AgentID: "test-agent", Force: false}
+	request := RemoveWorktreeRequest{SessionID: "test-session", Force: false}
 	ctx := context.Background()
 
 	// act
@@ -95,18 +95,18 @@ func TestRemoveWorktreeUseCase_Execute_UnpushedCommitsWithoutForce(t *testing.T)
 		hasUncommittedChangesFunc: func(ctx context.Context, worktreePath string) (bool, int, error) {
 			return false, 0, nil
 		},
-		hasUnpushedCommitsFunc: func(ctx context.Context, baseBranch string, agentBranch string) (int, error) {
+		hasUnpushedCommitsFunc: func(ctx context.Context, baseBranch string, sessionBranch string) (int, error) {
 			return 5, nil
 		},
 	}
-	agentRepository := newMockAgentRepository()
-	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, agentRepository, "main")
+	sessionRepository := newMockSessionRepository()
+	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, sessionRepository, "main")
 
-	agentID, _ := domain.NewAgentID("test-agent")
-	agent, _ := domain.NewAgent(agentID, "/path")
-	agentRepository.Save(context.Background(), agent)
+	sessionID, _ := domain.NewSessionID("test-session")
+	session, _ := domain.NewSession(sessionID, "/path")
+	sessionRepository.Save(context.Background(), session)
 
-	request := RemoveWorktreeRequest{AgentID: "test-agent", Force: false}
+	request := RemoveWorktreeRequest{SessionID: "test-session", Force: false}
 	ctx := context.Background()
 
 	// act
@@ -133,18 +133,18 @@ func TestRemoveWorktreeUseCase_Execute_CleanWorktree(t *testing.T) {
 		hasUncommittedChangesFunc: func(ctx context.Context, worktreePath string) (bool, int, error) {
 			return false, 0, nil
 		},
-		hasUnpushedCommitsFunc: func(ctx context.Context, baseBranch string, agentBranch string) (int, error) {
+		hasUnpushedCommitsFunc: func(ctx context.Context, baseBranch string, sessionBranch string) (int, error) {
 			return 0, nil
 		},
 	}
-	agentRepository := newMockAgentRepository()
-	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, agentRepository, "main")
+	sessionRepository := newMockSessionRepository()
+	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, sessionRepository, "main")
 
-	agentID, _ := domain.NewAgentID("test-agent")
-	agent, _ := domain.NewAgent(agentID, "/path")
-	agentRepository.Save(context.Background(), agent)
+	sessionID, _ := domain.NewSessionID("test-session")
+	session, _ := domain.NewSession(sessionID, "/path")
+	sessionRepository.Save(context.Background(), session)
 
-	request := RemoveWorktreeRequest{AgentID: "test-agent", Force: false}
+	request := RemoveWorktreeRequest{SessionID: "test-session", Force: false}
 	ctx := context.Background()
 
 	// act
@@ -161,9 +161,9 @@ func TestRemoveWorktreeUseCase_Execute_CleanWorktree(t *testing.T) {
 		t.Error("Execute() expected RemovedAt to be set")
 	}
 
-	savedAgent, _ := agentRepository.FindByID(ctx, agentID)
-	if savedAgent.Status() != domain.StatusRemoved {
-		t.Errorf("Execute() agent status = %v, want %v", savedAgent.Status(), domain.StatusRemoved)
+	savedSession, _ := sessionRepository.FindByID(ctx, sessionID)
+	if savedSession.Status() != domain.StatusRemoved {
+		t.Errorf("Execute() session status = %v, want %v", savedSession.Status(), domain.StatusRemoved)
 	}
 }
 
@@ -173,18 +173,18 @@ func TestRemoveWorktreeUseCase_Execute_ForceRemoveWithChanges(t *testing.T) {
 		hasUncommittedChangesFunc: func(ctx context.Context, worktreePath string) (bool, int, error) {
 			return true, 3, nil
 		},
-		hasUnpushedCommitsFunc: func(ctx context.Context, baseBranch string, agentBranch string) (int, error) {
+		hasUnpushedCommitsFunc: func(ctx context.Context, baseBranch string, sessionBranch string) (int, error) {
 			return 2, nil
 		},
 	}
-	agentRepository := newMockAgentRepository()
-	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, agentRepository, "main")
+	sessionRepository := newMockSessionRepository()
+	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, sessionRepository, "main")
 
-	agentID, _ := domain.NewAgentID("test-agent")
-	agent, _ := domain.NewAgent(agentID, "/path")
-	agentRepository.Save(context.Background(), agent)
+	sessionID, _ := domain.NewSessionID("test-session")
+	session, _ := domain.NewSession(sessionID, "/path")
+	sessionRepository.Save(context.Background(), session)
 
-	request := RemoveWorktreeRequest{AgentID: "test-agent", Force: true}
+	request := RemoveWorktreeRequest{SessionID: "test-session", Force: true}
 	ctx := context.Background()
 
 	// act
@@ -201,18 +201,18 @@ func TestRemoveWorktreeUseCase_Execute_ForceRemoveWithChanges(t *testing.T) {
 		t.Error("Execute() expected RemovedAt to be set")
 	}
 
-	savedAgent, _ := agentRepository.FindByID(ctx, agentID)
-	if savedAgent.Status() != domain.StatusRemoved {
-		t.Errorf("Execute() agent status = %v, want %v", savedAgent.Status(), domain.StatusRemoved)
+	savedSession, _ := sessionRepository.FindByID(ctx, sessionID)
+	if savedSession.Status() != domain.StatusRemoved {
+		t.Errorf("Execute() session status = %v, want %v", savedSession.Status(), domain.StatusRemoved)
 	}
 }
 
-func TestRemoveWorktreeUseCase_Execute_InvalidAgentID(t *testing.T) {
+func TestRemoveWorktreeUseCase_Execute_InvalidSessionID(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, agentRepository, "main")
-	request := RemoveWorktreeRequest{AgentID: "Invalid_ID", Force: false}
+	sessionRepository := newMockSessionRepository()
+	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, sessionRepository, "main")
+	request := RemoveWorktreeRequest{SessionID: "Invalid_ID", Force: false}
 	ctx := context.Background()
 
 	// act
@@ -220,7 +220,7 @@ func TestRemoveWorktreeUseCase_Execute_InvalidAgentID(t *testing.T) {
 
 	// assert
 	if err == nil {
-		t.Error("Execute() expected error for invalid agent ID")
+		t.Error("Execute() expected error for invalid session ID")
 	}
 }
 
@@ -230,21 +230,21 @@ func TestRemoveWorktreeUseCase_Execute_GitOperationFails(t *testing.T) {
 		hasUncommittedChangesFunc: func(ctx context.Context, worktreePath string) (bool, int, error) {
 			return false, 0, nil
 		},
-		hasUnpushedCommitsFunc: func(ctx context.Context, baseBranch string, agentBranch string) (int, error) {
+		hasUnpushedCommitsFunc: func(ctx context.Context, baseBranch string, sessionBranch string) (int, error) {
 			return 0, nil
 		},
 		removeWorktreeFunc: func(ctx context.Context, path string, force bool) error {
 			return errors.New("git error")
 		},
 	}
-	agentRepository := newMockAgentRepository()
-	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, agentRepository, "main")
+	sessionRepository := newMockSessionRepository()
+	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, sessionRepository, "main")
 
-	agentID, _ := domain.NewAgentID("test-agent")
-	agent, _ := domain.NewAgent(agentID, "/path")
-	agentRepository.Save(context.Background(), agent)
+	sessionID, _ := domain.NewSessionID("test-session")
+	session, _ := domain.NewSession(sessionID, "/path")
+	sessionRepository.Save(context.Background(), session)
 
-	request := RemoveWorktreeRequest{AgentID: "test-agent", Force: false}
+	request := RemoveWorktreeRequest{SessionID: "test-session", Force: false}
 	ctx := context.Background()
 
 	// act
@@ -262,21 +262,21 @@ func TestRemoveWorktreeUseCase_Execute_BranchDeleteFailsContinues(t *testing.T) 
 		hasUncommittedChangesFunc: func(ctx context.Context, worktreePath string) (bool, int, error) {
 			return false, 0, nil
 		},
-		hasUnpushedCommitsFunc: func(ctx context.Context, baseBranch string, agentBranch string) (int, error) {
+		hasUnpushedCommitsFunc: func(ctx context.Context, baseBranch string, sessionBranch string) (int, error) {
 			return 0, nil
 		},
 		deleteBranchFunc: func(ctx context.Context, branchName string, force bool) error {
 			return errors.New("branch delete error")
 		},
 	}
-	agentRepository := newMockAgentRepository()
-	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, agentRepository, "main")
+	sessionRepository := newMockSessionRepository()
+	removeWorktreeUseCase := NewRemoveWorktreeUseCase(gitOperations, sessionRepository, "main")
 
-	agentID, _ := domain.NewAgentID("test-agent")
-	agent, _ := domain.NewAgent(agentID, "/path")
-	agentRepository.Save(context.Background(), agent)
+	sessionID, _ := domain.NewSessionID("test-session")
+	session, _ := domain.NewSession(sessionID, "/path")
+	sessionRepository.Save(context.Background(), session)
 
-	request := RemoveWorktreeRequest{AgentID: "test-agent", Force: false}
+	request := RemoveWorktreeRequest{SessionID: "test-session", Force: false}
 	ctx := context.Background()
 
 	// act
@@ -290,8 +290,8 @@ func TestRemoveWorktreeUseCase_Execute_BranchDeleteFailsContinues(t *testing.T) 
 		t.Error("Execute() expected RemovedAt to be set even if branch delete fails")
 	}
 
-	savedAgent, _ := agentRepository.FindByID(ctx, agentID)
-	if savedAgent.Status() != domain.StatusRemoved {
-		t.Errorf("Execute() agent status = %v, want %v", savedAgent.Status(), domain.StatusRemoved)
+	savedSession, _ := sessionRepository.FindByID(ctx, sessionID)
+	if savedSession.Status() != domain.StatusRemoved {
+		t.Errorf("Execute() session status = %v, want %v", savedSession.Status(), domain.StatusRemoved)
 	}
 }

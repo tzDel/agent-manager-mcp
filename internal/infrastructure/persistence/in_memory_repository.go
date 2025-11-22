@@ -8,41 +8,41 @@ import (
 	"github.com/tzDel/orchestrAIgent/internal/domain"
 )
 
-type InMemoryAgentRepository struct {
-	mutex  sync.RWMutex
-	agents map[string]*domain.Agent
+type InMemorySessionRepository struct {
+	mutex    sync.RWMutex
+	sessions map[string]*domain.Session
 }
 
-func NewInMemoryAgentRepository() *InMemoryAgentRepository {
-	return &InMemoryAgentRepository{
-		agents: make(map[string]*domain.Agent),
+func NewInMemorySessionRepository() *InMemorySessionRepository {
+	return &InMemorySessionRepository{
+		sessions: make(map[string]*domain.Session),
 	}
 }
 
-func (repository *InMemoryAgentRepository) Save(ctx context.Context, agent *domain.Agent) error {
+func (repository *InMemorySessionRepository) Save(ctx context.Context, session *domain.Session) error {
 	repository.mutex.Lock()
 	defer repository.mutex.Unlock()
 
-	repository.agents[agent.ID().String()] = agent
+	repository.sessions[session.ID().String()] = session
 	return nil
 }
 
-func (repository *InMemoryAgentRepository) FindByID(ctx context.Context, agentID domain.AgentID) (*domain.Agent, error) {
+func (repository *InMemorySessionRepository) FindByID(ctx context.Context, sessionID domain.SessionID) (*domain.Session, error) {
 	repository.mutex.RLock()
 	defer repository.mutex.RUnlock()
 
-	agent, exists := repository.agents[agentID.String()]
+	session, exists := repository.sessions[sessionID.String()]
 	if !exists {
-		return nil, fmt.Errorf("agent not found: %s", agentID.String())
+		return nil, fmt.Errorf("session not found: %s", sessionID.String())
 	}
 
-	return agent, nil
+	return session, nil
 }
 
-func (repository *InMemoryAgentRepository) Exists(ctx context.Context, agentID domain.AgentID) (bool, error) {
+func (repository *InMemorySessionRepository) Exists(ctx context.Context, sessionID domain.SessionID) (bool, error) {
 	repository.mutex.RLock()
 	defer repository.mutex.RUnlock()
 
-	_, exists := repository.agents[agentID.String()]
+	_, exists := repository.sessions[sessionID.String()]
 	return exists, nil
 }

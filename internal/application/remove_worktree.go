@@ -9,12 +9,12 @@ import (
 )
 
 type RemoveWorktreeRequest struct {
-	AgentID string
-	Force   bool
+	SessionID string
+	Force     bool
 }
 
 type RemoveWorktreeResponse struct {
-	AgentID            string    `json:"agentId"`
+	SessionID          string    `json:"sessionId"`
 	RemovedAt          time.Time `json:"removedAt,omitempty"`
 	HasUnmergedChanges bool      `json:"hasUnmergedChanges"`
 	UnmergedCommits    int       `json:"unmergedCommits"`
@@ -23,20 +23,20 @@ type RemoveWorktreeResponse struct {
 }
 
 type RemoveWorktreeUseCase struct {
-	gitOperations   domain.GitOperations
-	agentRepository domain.AgentRepository
-	baseBranch      string
+	gitOperations     domain.GitOperations
+	sessionRepository domain.SessionRepository
+	baseBranch        string
 }
 
 func NewRemoveWorktreeUseCase(
 	gitOperations domain.GitOperations,
-	agentRepository domain.AgentRepository,
+	sessionRepository domain.SessionRepository,
 	baseBranch string,
 ) *RemoveWorktreeUseCase {
 	return &RemoveWorktreeUseCase{
-		gitOperations:   gitOperations,
-		agentRepository: agentRepository,
-		baseBranch:      baseBranch,
+		gitOperations:     gitOperations,
+		sessionRepository: sessionRepository,
+		baseBranch:        baseBranch,
 	}
 }
 
@@ -44,24 +44,24 @@ func (removeWorktreeUseCase *RemoveWorktreeUseCase) Execute(
 	ctx context.Context,
 	request RemoveWorktreeRequest,
 ) (*RemoveWorktreeResponse, error) {
-	agentID, err := removeWorktreeUseCase.validateAgentID(request.AgentID)
+	sessionID, err := removeWorktreeUseCase.validateSessionID(request.SessionID)
 	if err != nil {
 		return nil, err
 	}
-	agent, err := removeWorktreeUseCase.fetchAgent(ctx, agentID)
+	session, err := removeWorktreeUseCase.fetchSession(ctx, sessionID)
 	if err != nil {
 		return nil, err
 	}
-	if err := removeWorktreeUseCase.verifyAgentNotRemoved(agent); err != nil {
+	if err := removeWorktreeUseCase.verifySessionNotRemoved(session); err != nil {
 		return nil, err
 	}
 
 	response := &RemoveWorktreeResponse{
-		AgentID: request.AgentID,
+		SessionID: request.SessionID,
 	}
 
 	if !request.Force {
-		err := removeWorktreeUseCase.checkForUnmergedWork(ctx, agent, response)
+		err := removeWorktreeUseCase.checkForUnmergedWork(ctx, session, response)
 		if err != nil {
 			return nil, err
 		}
@@ -70,11 +70,11 @@ func (removeWorktreeUseCase *RemoveWorktreeUseCase) Execute(
 		}
 	}
 
-	if err := removeWorktreeUseCase.removeWorktree(ctx, agent, request.Force); err != nil {
+	if err := removeWorktreeUseCase.removeWorktree(ctx, session, request.Force); err != nil {
 		return nil, err
 	}
-	removeWorktreeUseCase.deleteBranchIfPossible(ctx, agent)
-	if err := removeWorktreeUseCase.markAgentRemoved(ctx, agent); err != nil {
+	removeWorktreeUseCase.deleteBranchIfPossible(ctx, session)
+	if err := removeWorktreeUseCase.markSessionRemoved(ctx, session); err != nil {
 		return nil, err
 	}
 
@@ -83,40 +83,40 @@ func (removeWorktreeUseCase *RemoveWorktreeUseCase) Execute(
 	return response, nil
 }
 
-func (removeWorktreeUseCase *RemoveWorktreeUseCase) validateAgentID(agentIDString string) (domain.AgentID, error) {
-	agentID, err := domain.NewAgentID(agentIDString)
+func (removeWorktreeUseCase *RemoveWorktreeUseCase) validateSessionID(sessionIDString string) (domain.SessionID, error) {
+	sessionID, err := domain.NewSessionID(sessionIDString)
 	if err != nil {
-		return domain.AgentID{}, fmt.Errorf("invalid agent ID: %w", err)
+		return domain.SessionID{}, fmt.Errorf("invalid session ID: %w", err)
 	}
-	return agentID, nil
+	return sessionID, nil
 }
 
-func (removeWorktreeUseCase *RemoveWorktreeUseCase) fetchAgent(ctx context.Context, agentID domain.AgentID) (*domain.Agent, error) {
-	agent, err := removeWorktreeUseCase.agentRepository.FindByID(ctx, agentID)
+func (removeWorktreeUseCase *RemoveWorktreeUseCase) fetchSession(ctx context.Context, sessionID domain.SessionID) (*domain.Session, error) {
+	session, err := removeWorktreeUseCase.sessionRepository.FindByID(ctx, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("agent not found: %w", err)
+		return nil, fmt.Errorf("session not found: %w", err)
 	}
-	return agent, nil
+	return session, nil
 }
 
-func (removeWorktreeUseCase *RemoveWorktreeUseCase) verifyAgentNotRemoved(agent *domain.Agent) error {
-	if agent.Status() == domain.StatusRemoved {
-		return fmt.Errorf("agent already removed")
+func (removeWorktreeUseCase *RemoveWorktreeUseCase) verifySessionNotRemoved(session *domain.Session) error {
+	if session.Status() == domain.StatusRemoved {
+		return fmt.Errorf("session already removed")
 	}
 	return nil
 }
 
 func (removeWorktreeUseCase *RemoveWorktreeUseCase) checkForUnmergedWork(
 	ctx context.Context,
-	agent *domain.Agent,
+	session *domain.Session,
 	response *RemoveWorktreeResponse,
 ) error {
-	hasUncommitted, fileCount, err := removeWorktreeUseCase.gitOperations.HasUncommittedChanges(ctx, agent.WorktreePath())
+	hasUncommitted, fileCount, err := removeWorktreeUseCase.gitOperations.HasUncommittedChanges(ctx, session.WorktreePath())
 	if err != nil {
 		return fmt.Errorf("failed to check uncommitted changes: %w", err)
 	}
 
-	unpushedCount, err := removeWorktreeUseCase.gitOperations.HasUnpushedCommits(ctx, removeWorktreeUseCase.baseBranch, agent.BranchName())
+	unpushedCount, err := removeWorktreeUseCase.gitOperations.HasUnpushedCommits(ctx, removeWorktreeUseCase.baseBranch, session.BranchName())
 	if err != nil {
 		return fmt.Errorf("failed to check unpushed commits: %w", err)
 	}
@@ -134,27 +134,27 @@ func (removeWorktreeUseCase *RemoveWorktreeUseCase) checkForUnmergedWork(
 func (removeWorktreeUseCase *RemoveWorktreeUseCase) setUnmergedChanges(response *RemoveWorktreeResponse, unpushedCount int, fileCount int) {
 	response.HasUnmergedChanges = true
 	response.Warning = fmt.Sprintf(
-		"Agent has %d unpushed commits and %d uncommitted files. Call with force=true to remove anyway.",
+		"Session has %d unpushed commits and %d uncommitted files. Call with force=true to remove anyway.",
 		unpushedCount,
 		fileCount,
 	)
 }
 
-func (removeWorktreeUseCase *RemoveWorktreeUseCase) removeWorktree(ctx context.Context, agent *domain.Agent, force bool) error {
-	if err := removeWorktreeUseCase.gitOperations.RemoveWorktree(ctx, agent.WorktreePath(), force); err != nil {
+func (removeWorktreeUseCase *RemoveWorktreeUseCase) removeWorktree(ctx context.Context, session *domain.Session, force bool) error {
+	if err := removeWorktreeUseCase.gitOperations.RemoveWorktree(ctx, session.WorktreePath(), force); err != nil {
 		return fmt.Errorf("failed to remove worktree: %w", err)
 	}
 	return nil
 }
 
-func (removeWorktreeUseCase *RemoveWorktreeUseCase) deleteBranchIfPossible(ctx context.Context, agent *domain.Agent) {
-	removeWorktreeUseCase.gitOperations.DeleteBranch(ctx, agent.BranchName(), true)
+func (removeWorktreeUseCase *RemoveWorktreeUseCase) deleteBranchIfPossible(ctx context.Context, session *domain.Session) {
+	removeWorktreeUseCase.gitOperations.DeleteBranch(ctx, session.BranchName(), true)
 }
 
-func (removeWorktreeUseCase *RemoveWorktreeUseCase) markAgentRemoved(ctx context.Context, agent *domain.Agent) error {
-	agent.MarkRemoved()
-	if err := removeWorktreeUseCase.agentRepository.Save(ctx, agent); err != nil {
-		return fmt.Errorf("failed to update agent: %w", err)
+func (removeWorktreeUseCase *RemoveWorktreeUseCase) markSessionRemoved(ctx context.Context, session *domain.Session) error {
+	session.MarkRemoved()
+	if err := removeWorktreeUseCase.sessionRepository.Save(ctx, session); err != nil {
+		return fmt.Errorf("failed to update session: %w", err)
 	}
 	return nil
 }

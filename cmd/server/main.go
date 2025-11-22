@@ -41,9 +41,9 @@ func resolveCurrentWorkingDirectory() string {
 
 func initializeMCPServer(repositoryPath string) *mcp.MCPServer {
 	gitOperations := git.NewGitClient(repositoryPath)
-	agentRepository := persistence.NewInMemoryAgentRepository()
-	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitOperations, agentRepository, repositoryPath)
-	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitOperations, agentRepository, "main")
+	sessionRepository := persistence.NewInMemorySessionRepository()
+	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitOperations, sessionRepository, repositoryPath)
+	removeWorktreeUseCase := application.NewRemoveWorktreeUseCase(gitOperations, sessionRepository, "main")
 
 	server, err := mcp.NewMCPServer(createWorktreeUseCase, removeWorktreeUseCase)
 	if err != nil {

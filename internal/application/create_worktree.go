@@ -9,11 +9,11 @@ import (
 )
 
 type CreateWorktreeRequest struct {
-	AgentID string
+	SessionID string
 }
 
 type CreateWorktreeResponse struct {
-	AgentID      string
+	SessionID    string
 	WorktreePath string
 	BranchName   string
 	Status       string
@@ -21,67 +21,67 @@ type CreateWorktreeResponse struct {
 
 type CreateWorktreeUseCase struct {
 	gitOperations     domain.GitOperations
-	agentRepository   domain.AgentRepository
+	sessionRepository domain.SessionRepository
 	repositoryRoot    string
 	worktreeDirectory string
 }
 
 func NewCreateWorktreeUseCase(
 	gitOperations domain.GitOperations,
-	agentRepository domain.AgentRepository,
+	sessionRepository domain.SessionRepository,
 	repositoryRoot string,
 ) *CreateWorktreeUseCase {
 	return &CreateWorktreeUseCase{
 		gitOperations:     gitOperations,
-		agentRepository:   agentRepository,
+		sessionRepository: sessionRepository,
 		repositoryRoot:    repositoryRoot,
 		worktreeDirectory: filepath.Join(repositoryRoot, ".worktrees"),
 	}
 }
 
 func (createWorktreeUseCase *CreateWorktreeUseCase) Execute(ctx context.Context, request CreateWorktreeRequest) (*CreateWorktreeResponse, error) {
-	agentID, err := createWorktreeUseCase.validateAgentID(request.AgentID)
+	sessionID, err := createWorktreeUseCase.validateSessionID(request.SessionID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := createWorktreeUseCase.ensureAgentDoesNotExist(ctx, agentID); err != nil {
+	if err := createWorktreeUseCase.ensureSessionDoesNotExist(ctx, sessionID); err != nil {
 		return nil, err
 	}
 
-	if err := createWorktreeUseCase.ensureBranchDoesNotExist(ctx, agentID.BranchName()); err != nil {
+	if err := createWorktreeUseCase.ensureBranchDoesNotExist(ctx, sessionID.BranchName()); err != nil {
 		return nil, err
 	}
 
-	worktreePath := createWorktreeUseCase.buildWorktreePath(agentID)
+	worktreePath := createWorktreeUseCase.buildWorktreePath(sessionID)
 
-	if err := createWorktreeUseCase.createWorktreeAndBranch(ctx, worktreePath, agentID.BranchName()); err != nil {
+	if err := createWorktreeUseCase.createWorktreeAndBranch(ctx, worktreePath, sessionID.BranchName()); err != nil {
 		return nil, err
 	}
 
-	agent, err := createWorktreeUseCase.createAndSaveAgent(ctx, agentID, worktreePath)
+	session, err := createWorktreeUseCase.createAndSaveSession(ctx, sessionID, worktreePath)
 	if err != nil {
 		return nil, err
 	}
 
-	return createWorktreeUseCase.buildResponse(agent), nil
+	return createWorktreeUseCase.buildResponse(session), nil
 }
 
-func (createWorktreeUseCase *CreateWorktreeUseCase) validateAgentID(agentIDString string) (domain.AgentID, error) {
-	agentID, err := domain.NewAgentID(agentIDString)
+func (createWorktreeUseCase *CreateWorktreeUseCase) validateSessionID(sessionIDString string) (domain.SessionID, error) {
+	sessionID, err := domain.NewSessionID(sessionIDString)
 	if err != nil {
-		return domain.AgentID{}, fmt.Errorf("invalid agent ID: %w", err)
+		return domain.SessionID{}, fmt.Errorf("invalid session ID: %w", err)
 	}
-	return agentID, nil
+	return sessionID, nil
 }
 
-func (createWorktreeUseCase *CreateWorktreeUseCase) ensureAgentDoesNotExist(ctx context.Context, agentID domain.AgentID) error {
-	exists, err := createWorktreeUseCase.agentRepository.Exists(ctx, agentID)
+func (createWorktreeUseCase *CreateWorktreeUseCase) ensureSessionDoesNotExist(ctx context.Context, sessionID domain.SessionID) error {
+	exists, err := createWorktreeUseCase.sessionRepository.Exists(ctx, sessionID)
 	if err != nil {
-		return fmt.Errorf("failed to check agent existence: %w", err)
+		return fmt.Errorf("failed to check session existence: %w", err)
 	}
 	if exists {
-		return fmt.Errorf("agent already exists: %s", agentID.String())
+		return fmt.Errorf("session already exists: %s", sessionID.String())
 	}
 	return nil
 }
@@ -97,8 +97,8 @@ func (createWorktreeUseCase *CreateWorktreeUseCase) ensureBranchDoesNotExist(ctx
 	return nil
 }
 
-func (createWorktreeUseCase *CreateWorktreeUseCase) buildWorktreePath(agentID domain.AgentID) string {
-	return filepath.Join(createWorktreeUseCase.worktreeDirectory, agentID.WorktreeDirName())
+func (createWorktreeUseCase *CreateWorktreeUseCase) buildWorktreePath(sessionID domain.SessionID) string {
+	return filepath.Join(createWorktreeUseCase.worktreeDirectory, sessionID.WorktreeDirName())
 }
 
 func (createWorktreeUseCase *CreateWorktreeUseCase) createWorktreeAndBranch(ctx context.Context, worktreePath string, branchName string) error {
@@ -108,24 +108,24 @@ func (createWorktreeUseCase *CreateWorktreeUseCase) createWorktreeAndBranch(ctx 
 	return nil
 }
 
-func (createWorktreeUseCase *CreateWorktreeUseCase) createAndSaveAgent(ctx context.Context, agentID domain.AgentID, worktreePath string) (*domain.Agent, error) {
-	agent, err := domain.NewAgent(agentID, worktreePath)
+func (createWorktreeUseCase *CreateWorktreeUseCase) createAndSaveSession(ctx context.Context, sessionID domain.SessionID, worktreePath string) (*domain.Session, error) {
+	session, err := domain.NewSession(sessionID, worktreePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create agent: %w", err)
+		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
-	if err := createWorktreeUseCase.agentRepository.Save(ctx, agent); err != nil {
-		return nil, fmt.Errorf("failed to save agent: %w", err)
+	if err := createWorktreeUseCase.sessionRepository.Save(ctx, session); err != nil {
+		return nil, fmt.Errorf("failed to save session: %w", err)
 	}
 
-	return agent, nil
+	return session, nil
 }
 
-func (createWorktreeUseCase *CreateWorktreeUseCase) buildResponse(agent *domain.Agent) *CreateWorktreeResponse {
+func (createWorktreeUseCase *CreateWorktreeUseCase) buildResponse(session *domain.Session) *CreateWorktreeResponse {
 	return &CreateWorktreeResponse{
-		AgentID:      agent.ID().String(),
-		WorktreePath: agent.WorktreePath(),
-		BranchName:   agent.BranchName(),
-		Status:       string(agent.Status()),
+		SessionID:    session.ID().String(),
+		WorktreePath: session.WorktreePath(),
+		BranchName:   session.BranchName(),
+		Status:       string(session.Status()),
 	}
 }

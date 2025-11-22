@@ -12,9 +12,9 @@ import (
 func TestCreateWorktreeUseCase_Execute_Success(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	request := CreateWorktreeRequest{AgentID: "test-agent"}
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	request := CreateWorktreeRequest{SessionID: "test-session"}
 	ctx := context.Background()
 
 	// act
@@ -25,12 +25,12 @@ func TestCreateWorktreeUseCase_Execute_Success(t *testing.T) {
 		t.Fatalf("Execute() error: %v", err)
 	}
 
-	if response.AgentID != "test-agent" {
-		t.Errorf("AgentID = %q, want %q", response.AgentID, "test-agent")
+	if response.SessionID != "test-session" {
+		t.Errorf("SessionID = %q, want %q", response.SessionID, "test-session")
 	}
 
-	if response.BranchName != "agent-test-agent" {
-		t.Errorf("BranchName = %q, want %q", response.BranchName, "agent-test-agent")
+	if response.BranchName != "session-test-session" {
+		t.Errorf("BranchName = %q, want %q", response.BranchName, "session-test-session")
 	}
 
 	if response.Status != "created" {
@@ -38,12 +38,12 @@ func TestCreateWorktreeUseCase_Execute_Success(t *testing.T) {
 	}
 }
 
-func TestCreateWorktreeUseCase_Execute_InvalidAgentID(t *testing.T) {
+func TestCreateWorktreeUseCase_Execute_InvalidSessionID(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	request := CreateWorktreeRequest{AgentID: "Invalid_ID"}
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	request := CreateWorktreeRequest{SessionID: "Invalid_ID"}
 	ctx := context.Background()
 
 	// act
@@ -51,21 +51,21 @@ func TestCreateWorktreeUseCase_Execute_InvalidAgentID(t *testing.T) {
 
 	// assert
 	if err == nil {
-		t.Error("Execute() expected error for invalid agent ID")
+		t.Error("Execute() expected error for invalid session ID")
 	}
 }
 
-func TestCreateWorktreeUseCase_Execute_AgentAlreadyExists(t *testing.T) {
+func TestCreateWorktreeUseCase_Execute_SessionAlreadyExists(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
 
-	agentID, _ := domain.NewAgentID("test-agent")
-	agent, _ := domain.NewAgent(agentID, "/path")
-	agentRepository.Save(context.Background(), agent)
+	sessionID, _ := domain.NewSessionID("test-session")
+	session, _ := domain.NewSession(sessionID, "/path")
+	sessionRepository.Save(context.Background(), session)
 
-	request := CreateWorktreeRequest{AgentID: "test-agent"}
+	request := CreateWorktreeRequest{SessionID: "test-session"}
 	ctx := context.Background()
 
 	// act
@@ -73,7 +73,7 @@ func TestCreateWorktreeUseCase_Execute_AgentAlreadyExists(t *testing.T) {
 
 	// assert
 	if err == nil {
-		t.Error("Execute() expected error for existing agent")
+		t.Error("Execute() expected error for existing session")
 	}
 }
 
@@ -84,9 +84,9 @@ func TestCreateWorktreeUseCase_Execute_BranchAlreadyExists(t *testing.T) {
 			return true, nil
 		},
 	}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	request := CreateWorktreeRequest{AgentID: "test-agent"}
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	request := CreateWorktreeRequest{SessionID: "test-session"}
 	ctx := context.Background()
 
 	// act
@@ -105,9 +105,9 @@ func TestCreateWorktreeUseCase_Execute_GitOperationFails(t *testing.T) {
 			return errors.New("git error")
 		},
 	}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	request := CreateWorktreeRequest{AgentID: "test-agent"}
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	request := CreateWorktreeRequest{SessionID: "test-session"}
 	ctx := context.Background()
 
 	// act
@@ -119,74 +119,74 @@ func TestCreateWorktreeUseCase_Execute_GitOperationFails(t *testing.T) {
 	}
 }
 
-func TestCreateWorktreeUseCase_ValidateAgentID_WithValidID_ReturnsAgentID(t *testing.T) {
+func TestCreateWorktreeUseCase_ValidateSessionID_WithValidID_ReturnsSessionID(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	validIDString := "test-agent"
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	validIDString := "test-session"
 
 	// act
-	agentID, err := createWorktreeUseCase.validateAgentID(validIDString)
+	sessionID, err := createWorktreeUseCase.validateSessionID(validIDString)
 
 	// assert
 	if err != nil {
-		t.Fatalf("validateAgentID() unexpected error: %v", err)
+		t.Fatalf("validateSessionID() unexpected error: %v", err)
 	}
-	if agentID.String() != validIDString {
-		t.Errorf("validateAgentID() returned %q, want %q", agentID.String(), validIDString)
+	if sessionID.String() != validIDString {
+		t.Errorf("validateSessionID() returned %q, want %q", sessionID.String(), validIDString)
 	}
 }
 
-func TestCreateWorktreeUseCase_ValidateAgentID_WithInvalidID_ReturnsError(t *testing.T) {
+func TestCreateWorktreeUseCase_ValidateSessionID_WithInvalidID_ReturnsError(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
 	invalidIDString := "Invalid_ID"
 
 	// act
-	_, err := createWorktreeUseCase.validateAgentID(invalidIDString)
+	_, err := createWorktreeUseCase.validateSessionID(invalidIDString)
 
 	// assert
 	if err == nil {
-		t.Error("validateAgentID() expected error for invalid agent ID")
+		t.Error("validateSessionID() expected error for invalid session ID")
 	}
 }
 
-func TestCreateWorktreeUseCase_EnsureAgentDoesNotExist_WhenAgentDoesNotExist_ReturnsNoError(t *testing.T) {
+func TestCreateWorktreeUseCase_EnsureSessionDoesNotExist_WhenSessionDoesNotExist_ReturnsNoError(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	agentID, _ := domain.NewAgentID("test-agent")
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	sessionID, _ := domain.NewSessionID("test-session")
 	ctx := context.Background()
 
 	// act
-	err := createWorktreeUseCase.ensureAgentDoesNotExist(ctx, agentID)
+	err := createWorktreeUseCase.ensureSessionDoesNotExist(ctx, sessionID)
 
 	// assert
 	if err != nil {
-		t.Errorf("ensureAgentDoesNotExist() unexpected error: %v", err)
+		t.Errorf("ensureSessionDoesNotExist() unexpected error: %v", err)
 	}
 }
 
-func TestCreateWorktreeUseCase_EnsureAgentDoesNotExist_WhenAgentExists_ReturnsError(t *testing.T) {
+func TestCreateWorktreeUseCase_EnsureSessionDoesNotExist_WhenSessionExists_ReturnsError(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	agentID, _ := domain.NewAgentID("test-agent")
-	agent, _ := domain.NewAgent(agentID, "/path")
-	agentRepository.Save(context.Background(), agent)
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	sessionID, _ := domain.NewSessionID("test-session")
+	session, _ := domain.NewSession(sessionID, "/path")
+	sessionRepository.Save(context.Background(), session)
 	ctx := context.Background()
 
 	// act
-	err := createWorktreeUseCase.ensureAgentDoesNotExist(ctx, agentID)
+	err := createWorktreeUseCase.ensureSessionDoesNotExist(ctx, sessionID)
 
 	// assert
 	if err == nil {
-		t.Error("ensureAgentDoesNotExist() expected error when agent exists")
+		t.Error("ensureSessionDoesNotExist() expected error when session exists")
 	}
 }
 
@@ -197,9 +197,9 @@ func TestCreateWorktreeUseCase_EnsureBranchDoesNotExist_WhenBranchDoesNotExist_R
 			return false, nil
 		},
 	}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	branchName := "agent-test-agent"
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	branchName := "session-test-session"
 	ctx := context.Background()
 
 	// act
@@ -218,9 +218,9 @@ func TestCreateWorktreeUseCase_EnsureBranchDoesNotExist_WhenBranchExists_Returns
 			return true, nil
 		},
 	}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	branchName := "agent-test-agent"
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	branchName := "session-test-session"
 	ctx := context.Background()
 
 	// act
@@ -235,15 +235,15 @@ func TestCreateWorktreeUseCase_EnsureBranchDoesNotExist_WhenBranchExists_Returns
 func TestCreateWorktreeUseCase_BuildWorktreePath_ReturnsCorrectPath(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	agentID, _ := domain.NewAgentID("test-agent")
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	sessionID, _ := domain.NewSessionID("test-session")
 
 	// act
-	worktreePath := createWorktreeUseCase.buildWorktreePath(agentID)
+	worktreePath := createWorktreeUseCase.buildWorktreePath(sessionID)
 
 	// assert
-	expectedPath := filepath.Join("/repo/root", ".worktrees", "agent-test-agent")
+	expectedPath := filepath.Join("/repo/root", ".worktrees", "session-test-session")
 	if worktreePath != expectedPath {
 		t.Errorf("buildWorktreePath() returned %q, want %q", worktreePath, expectedPath)
 	}
@@ -252,10 +252,10 @@ func TestCreateWorktreeUseCase_BuildWorktreePath_ReturnsCorrectPath(t *testing.T
 func TestCreateWorktreeUseCase_CreateWorktreeAndBranch_Success_ReturnsNoError(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	worktreePath := "/repo/root/.worktrees/agent-test-agent"
-	branchName := "agent-test-agent"
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	worktreePath := "/repo/root/.worktrees/session-test-session"
+	branchName := "session-test-session"
 	ctx := context.Background()
 
 	// act
@@ -274,10 +274,10 @@ func TestCreateWorktreeUseCase_CreateWorktreeAndBranch_GitOperationFails_Returns
 			return errors.New("git error")
 		},
 	}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	worktreePath := "/repo/root/.worktrees/agent-test-agent"
-	branchName := "agent-test-agent"
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	worktreePath := "/repo/root/.worktrees/session-test-session"
+	branchName := "session-test-session"
 	ctx := context.Background()
 
 	// act
@@ -289,47 +289,47 @@ func TestCreateWorktreeUseCase_CreateWorktreeAndBranch_GitOperationFails_Returns
 	}
 }
 
-func TestCreateWorktreeUseCase_CreateAndSaveAgent_Success_ReturnsAgent(t *testing.T) {
+func TestCreateWorktreeUseCase_CreateAndSaveSession_Success_ReturnsSession(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	agentID, _ := domain.NewAgentID("test-agent")
-	worktreePath := "/repo/root/.worktrees/agent-test-agent"
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	sessionID, _ := domain.NewSessionID("test-session")
+	worktreePath := "/repo/root/.worktrees/session-test-session"
 	ctx := context.Background()
 
 	// act
-	agent, err := createWorktreeUseCase.createAndSaveAgent(ctx, agentID, worktreePath)
+	session, err := createWorktreeUseCase.createAndSaveSession(ctx, sessionID, worktreePath)
 
 	// assert
 	if err != nil {
-		t.Fatalf("createAndSaveAgent() unexpected error: %v", err)
+		t.Fatalf("createAndSaveSession() unexpected error: %v", err)
 	}
-	if agent.ID().String() != "test-agent" {
-		t.Errorf("createAndSaveAgent() agent ID = %q, want %q", agent.ID().String(), "test-agent")
+	if session.ID().String() != "test-session" {
+		t.Errorf("createAndSaveSession() session ID = %q, want %q", session.ID().String(), "test-session")
 	}
-	if agent.WorktreePath() != worktreePath {
-		t.Errorf("createAndSaveAgent() worktree path = %q, want %q", agent.WorktreePath(), worktreePath)
+	if session.WorktreePath() != worktreePath {
+		t.Errorf("createAndSaveSession() worktree path = %q, want %q", session.WorktreePath(), worktreePath)
 	}
 }
 
 func TestCreateWorktreeUseCase_BuildResponse_ReturnsCorrectResponse(t *testing.T) {
 	// arrange
 	gitOperations := &mockGitOperations{}
-	agentRepository := newMockAgentRepository()
-	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, agentRepository, "/repo/root")
-	agentID, _ := domain.NewAgentID("test-agent")
-	agent, _ := domain.NewAgent(agentID, "/repo/root/.worktrees/agent-test-agent")
+	sessionRepository := newMockSessionRepository()
+	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
+	sessionID, _ := domain.NewSessionID("test-session")
+	session, _ := domain.NewSession(sessionID, "/repo/root/.worktrees/session-test-session")
 
 	// act
-	response := createWorktreeUseCase.buildResponse(agent)
+	response := createWorktreeUseCase.buildResponse(session)
 
 	// assert
-	if response.AgentID != "test-agent" {
-		t.Errorf("buildResponse() AgentID = %q, want %q", response.AgentID, "test-agent")
+	if response.SessionID != "test-session" {
+		t.Errorf("buildResponse() SessionID = %q, want %q", response.SessionID, "test-session")
 	}
-	if response.BranchName != "agent-test-agent" {
-		t.Errorf("buildResponse() BranchName = %q, want %q", response.BranchName, "agent-test-agent")
+	if response.BranchName != "session-test-session" {
+		t.Errorf("buildResponse() BranchName = %q, want %q", response.BranchName, "session-test-session")
 	}
 	if response.Status != "created" {
 		t.Errorf("buildResponse() Status = %q, want %q", response.Status, "created")

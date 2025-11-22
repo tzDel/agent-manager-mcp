@@ -9,23 +9,23 @@ import (
 )
 
 type CreateWorktreeArgs struct {
-	AgentID string `json:"agentId" jsonschema:"required" jsonschema_description:"The unique identifier for the agent"`
+	SessionID string `json:"sessionId" jsonschema:"required" jsonschema_description:"The unique identifier for the session"`
 }
 
 type CreateWorktreeOutput struct {
-	AgentID      string `json:"agentId"`
+	SessionID    string `json:"sessionId"`
 	WorktreePath string `json:"worktreePath"`
 	BranchName   string `json:"branchName"`
 	Status       string `json:"status"`
 }
 
 type RemoveWorktreeArgs struct {
-	AgentID string `json:"agentId" jsonschema:"required" jsonschema_description:"Agent identifier"`
-	Force   bool   `json:"force" jsonschema_description:"Skip safety checks and force removal"`
+	SessionID string `json:"sessionId" jsonschema:"required" jsonschema_description:"Session identifier"`
+	Force     bool   `json:"force" jsonschema_description:"Skip safety checks and force removal"`
 }
 
 type RemoveWorktreeOutput struct {
-	AgentID            string `json:"agentId"`
+	SessionID          string `json:"sessionId"`
 	RemovedAt          string `json:"removedAt,omitempty"`
 	HasUnmergedChanges bool   `json:"hasUnmergedChanges"`
 	UnmergedCommits    int    `json:"unmergedCommits"`
@@ -60,7 +60,7 @@ func NewMCPServer(
 		mcpServer,
 		&mcpsdk.Tool{
 			Name:        "create_worktree",
-			Description: "Creates an isolated git worktree for a specific agent with its own branch",
+			Description: "Creates an isolated git worktree for a specific session with its own branch",
 		},
 		server.handleCreateWorktree,
 	)
@@ -69,7 +69,7 @@ func NewMCPServer(
 		mcpServer,
 		&mcpsdk.Tool{
 			Name:        "remove_worktree",
-			Description: "Removes an agent's worktree and branch. Checks for unmerged changes unless force=true.",
+			Description: "Removes an session's worktree and branch. Checks for unmerged changes unless force=true.",
 		},
 		server.handleRemoveWorktree,
 	)
@@ -83,7 +83,7 @@ func (s *MCPServer) handleCreateWorktree(
 	args CreateWorktreeArgs,
 ) (*mcpsdk.CallToolResult, any, error) {
 	request := application.CreateWorktreeRequest{
-		AgentID: args.AgentID,
+		SessionID: args.SessionID,
 	}
 
 	response, err := s.createWorktreeUseCase.Execute(ctx, request)
@@ -93,13 +93,13 @@ func (s *MCPServer) handleCreateWorktree(
 	}
 
 	output := CreateWorktreeOutput{
-		AgentID:      response.AgentID,
+		SessionID:    response.SessionID,
 		WorktreePath: response.WorktreePath,
 		BranchName:   response.BranchName,
 		Status:       response.Status,
 	}
 
-	message := fmt.Sprintf("Successfully created worktree for agent '%s' at '%s' on branch '%s'", response.AgentID, response.WorktreePath, response.BranchName)
+	message := fmt.Sprintf("Successfully created worktree for session '%s' at '%s' on branch '%s'", response.SessionID, response.WorktreePath, response.BranchName)
 	return newSuccessResult(message), output, nil
 }
 
@@ -109,8 +109,8 @@ func (s *MCPServer) handleRemoveWorktree(
 	args RemoveWorktreeArgs,
 ) (*mcpsdk.CallToolResult, any, error) {
 	request := application.RemoveWorktreeRequest{
-		AgentID: args.AgentID,
-		Force:   args.Force,
+		SessionID: args.SessionID,
+		Force:     args.Force,
 	}
 
 	response, err := s.removeWorktreeUseCase.Execute(ctx, request)
@@ -120,7 +120,7 @@ func (s *MCPServer) handleRemoveWorktree(
 	}
 
 	output := RemoveWorktreeOutput{
-		AgentID:            response.AgentID,
+		SessionID:          response.SessionID,
 		HasUnmergedChanges: response.HasUnmergedChanges,
 		UnmergedCommits:    response.UnmergedCommits,
 		UncommittedFiles:   response.UncommittedFiles,
@@ -133,8 +133,8 @@ func (s *MCPServer) handleRemoveWorktree(
 
 	if response.HasUnmergedChanges {
 		message := fmt.Sprintf(
-			"WARNING: Agent '%s' has unmerged changes\n\nUncommitted files: %d\nUnpushed commits: %d\n\n%s",
-			response.AgentID,
+			"WARNING: Session '%s' has unmerged changes\n\nUncommitted files: %d\nUnpushed commits: %d\n\n%s",
+			response.SessionID,
 			response.UncommittedFiles,
 			response.UnmergedCommits,
 			response.Warning,
@@ -145,7 +145,7 @@ func (s *MCPServer) handleRemoveWorktree(
 		}, output, nil
 	}
 
-	message := fmt.Sprintf("Successfully removed worktree for agent '%s'", response.AgentID)
+	message := fmt.Sprintf("Successfully removed worktree for session '%s'", response.SessionID)
 	return newSuccessResult(message), output, nil
 }
 
