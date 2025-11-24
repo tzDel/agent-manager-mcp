@@ -154,7 +154,7 @@ Application (Use Cases: CreateWorktree, RunTests, MergeToMain)
     ↓ depends on
 Domain (Entities: Agent, Worktree | Interfaces: GitOperations, AgentRepository)
     ↑ implemented by
-Infrastructure (GitClient, InMemoryRepository, ProcessManager)
+Infrastructure (GitClient, SQLiteRepository, ProcessManager)
 ```
 
 **Rules:**
@@ -183,7 +183,9 @@ orchestrAIgent/
 │   ├── infrastructure/                  # Implements interfaces
 │   │   ├── git/git_client.go            # GitClient implementing GitOperations
 │   │   ├── process/process_manager.go   # ProcessManager for agent lifecycle (future)
-│   │   └── persistence/in_memory_repository.go  # InMemoryAgentRepository
+│   │   └── persistence/
+│   │       ├── sqlite_repository.go     # SQLiteSessionRepository (primary)
+│   │       └── in_memory_repository.go  # InMemorySessionRepository (testing)
 │   └── adapters/                        # External protocols
 │       └── mcp/
 │           ├── server.go                # MCP server setup

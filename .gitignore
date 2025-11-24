@@ -35,3 +35,8 @@ config.yaml
 # Worktrees
 .worktrees/
 /.mcp.json
+
+# SQLite database
+.orchestrAIgent.db
+.orchestrAIgent.db-shm
+.orchestrAIgent.db-wal

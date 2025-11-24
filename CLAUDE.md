@@ -70,7 +70,8 @@ internal/
     ├── git/
     │   └── git_client.go      # GitClient implementing GitOperations
     └── persistence/
-        └── in_memory_repository.go  # InMemoryAgentRepository
+        ├── sqlite_repository.go     # SQLiteSessionRepository (primary)
+        └── in_memory_repository.go  # InMemorySessionRepository (testing)
 
 cmd/
 └── server/
@@ -105,12 +106,12 @@ cmd/
 
 ## Key Design Decisions
 
-1. **In-Memory State**: Current implementation uses in-memory storage; server restart loses all state
+1. **SQLite Persistence**: Session data persisted in SQLite database (`.orchestrAIgent.db`); state survives server restarts
 2. **Single Repository**: One configured repository per server instance
 3. **Local Merges**: Merges stay local; manual `git push` required to sync with remote
-4. **Simple Status Model**: Three agent status values (`created`, `merged`, `failed`)
+4. **Simple Status Model**: Three session status values (`open`, `reviewed`, `merged`)
 5. **Clean Architecture**: Strict layer separation (domain → application → infrastructure)
-6. **Value Objects**: AgentID enforces validation rules at domain level
+6. **Value Objects**: SessionID enforces validation rules at domain level
 
 ---
 
@@ -122,13 +123,13 @@ Use descriptive names. Never use abbreviations!
 
 ```go
 // ✅ GOOD (Descriptive names)
-agentRepository := NewInMemoryRepository()
-worktreePath := filepath.Join(baseDir, agent.ID())
+sessionRepository, err := NewSQLiteSessionRepository(databasePath)
+worktreePath := filepath.Join(baseDir, session.ID())
 testCommand := config.TestCommand
 
 // ❌ BAD (Abbreviations)
-repo := NewInMemoryRepository()
-path := filepath.Join(baseDir, agent.ID())
+repo, err := NewSQLiteSessionRepository(dbPath)
+path := filepath.Join(baseDir, session.ID())
 cmd := config.TestCommand
 ```
 

@@ -14,21 +14,25 @@ import (
 )
 
 func main() {
-	repositoryPath := parseRepositoryPath()
-	server := initializeMCPServer(repositoryPath)
+	repositoryPath, databasePath := parseFlags()
+	sessionRepository, cleanup := initializeSessionRepository(databasePath)
+	defer cleanup()
+
+	server := initializeMCPServer(repositoryPath, sessionRepository)
 	startMCPServer(server, repositoryPath)
 }
 
-func parseRepositoryPath() string {
-	var repositoryPath string
-	flag.StringVar(&repositoryPath, "repo", "", "path to git repository (defaults to current directory)")
+func parseFlags() (string, string) {
+	repositoryPath := flag.String("repo", "", "path to git repository (defaults to current directory)")
+	databasePath := flag.String("db", ".orchestrAIgent.db", "path to SQLite database (defaults to .orchestrAIgent.db in repository)")
 	flag.Parse()
 
-	if repositoryPath == "" {
-		return resolveCurrentWorkingDirectory()
+	repoPath := *repositoryPath
+	if repoPath == "" {
+		repoPath = resolveCurrentWorkingDirectory()
 	}
 
-	return repositoryPath
+	return repoPath, *databasePath
 }
 
 func resolveCurrentWorkingDirectory() string {
@@ -39,9 +43,23 @@ func resolveCurrentWorkingDirectory() string {
 	return currentWorkingDirectory
 }
 
-func initializeMCPServer(repositoryPath string) *mcp.MCPServer {
+func initializeSessionRepository(databasePath string) (*persistence.SQLiteSessionRepository, func()) {
+	sessionRepository, err := persistence.NewSQLiteSessionRepository(databasePath)
+	if err != nil {
+		log.Fatalf("failed to initialize session repository: %v", err)
+	}
+
+	cleanup := func() {
+		if err := sessionRepository.Close(); err != nil {
+			log.Printf("error closing database: %v", err)
+		}
+	}
+
+	return sessionRepository, cleanup
+}
+
+func initializeMCPServer(repositoryPath string, sessionRepository *persistence.SQLiteSessionRepository) *mcp.MCPServer {
 	gitOperations := git.NewGitClient(repositoryPath)
-	sessionRepository := persistence.NewInMemorySessionRepository()
 	baseBranch := "main"
 
 	createWorktreeUseCase := application.NewCreateWorktreeUseCase(gitOperations, sessionRepository, repositoryPath)
