@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/tzDel/orchestragent-mcp/internal/adapters/mcp"
 	"github.com/tzDel/orchestragent-mcp/internal/application"
@@ -13,8 +14,17 @@ import (
 	"github.com/tzDel/orchestragent-mcp/internal/infrastructure/persistence"
 )
 
+const databaseFileName = ".orchestragent-mcp.db"
+const defaultDatabaseDirectory = "."
+
 func main() {
-	repositoryPath, databasePath := parseFlags()
+	repositoryPath, databaseDirectory := parseFlags()
+
+	databasePath, err := resolveDatabasePath(databaseDirectory)
+	if err != nil {
+		log.Fatalf("failed to resolve database path: %v", err)
+	}
+
 	sessionRepository, cleanup := initializeSessionRepository(databasePath)
 	defer cleanup()
 
@@ -23,16 +33,11 @@ func main() {
 }
 
 func parseFlags() (string, string) {
-	repositoryPath := flag.String("repo", "", "path to git repository (defaults to current directory)")
-	databasePath := flag.String("db", ".orchestragent-mcp.db", "path to SQLite database (defaults to .orchestragent-mcp.db in repository)")
+	repositoryPath := flag.String("repo", resolveCurrentWorkingDirectory(), "path to git repository (defaults to current directory)")
+	databaseDirectory := flag.String("db", defaultDatabaseDirectory, "directory where SQLite database should be created (defaults to current working directory)")
 	flag.Parse()
 
-	repoPath := *repositoryPath
-	if repoPath == "" {
-		repoPath = resolveCurrentWorkingDirectory()
-	}
-
-	return repoPath, *databasePath
+	return *repositoryPath, *databaseDirectory
 }
 
 func resolveCurrentWorkingDirectory() string {
@@ -81,4 +86,25 @@ func startMCPServer(server *mcp.MCPServer, repositoryPath string) {
 	if err := server.Run(serverContext); err != nil {
 		log.Fatalf("MCP server terminated with error: %v", err)
 	}
+}
+
+func resolveDatabasePath(databaseDirectory string) (string, error) {
+	baseDirectory := databaseDirectory
+	if baseDirectory == "" {
+		baseDirectory = defaultDatabaseDirectory
+	}
+
+	if !filepath.IsAbs(baseDirectory) {
+		absoluteDirectory, err := filepath.Abs(baseDirectory)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve absolute path for %s: %w", baseDirectory, err)
+		}
+		baseDirectory = absoluteDirectory
+	}
+
+	if err := os.MkdirAll(baseDirectory, 0o755); err != nil {
+		return "", fmt.Errorf("failed to create database directory %s: %w", baseDirectory, err)
+	}
+
+	return filepath.Join(baseDirectory, databaseFileName), nil
 }

@@ -53,7 +53,7 @@ func TestNewSessionID_Invalid(t *testing.T) {
 func TestSessionID_BranchName(t *testing.T) {
 	// arrange
 	sessionID, _ := NewSessionID("copilot-123")
-	expected := "session-copilot-123"
+	expected := "orchestragent-copilot-123"
 
 	// act
 	result := sessionID.BranchName()

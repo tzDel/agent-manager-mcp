@@ -144,8 +144,8 @@ func TestCreateWorktreeToolHandler_ValidInput_ReturnsSuccess(t *testing.T) {
 	if response.SessionID != "copilot" {
 		t.Errorf("expected session ID 'copilot', got: %s", response.SessionID)
 	}
-	if response.BranchName != "session-copilot" {
-		t.Errorf("expected branch name 'session-copilot', got: %s", response.BranchName)
+	if response.BranchName != "orchestragent-copilot" {
+		t.Errorf("expected branch name 'orchestragent-copilot', got: %s", response.BranchName)
 	}
 	if response.Status != "open" {
 		t.Errorf("expected status 'open', got: %s", response.Status)
@@ -298,7 +298,7 @@ func TestRemoveSessionToolHandler_WithUncommittedChanges_ReturnsWarning(t *testi
 		t.Fatalf("failed to create worktree: %v", createResult.Content)
 	}
 
-	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "session-test-session")
+	worktreePath := filepath.Join(repositoryRoot, ".worktrees", "orchestragent-test-session")
 	newFilePath := filepath.Join(worktreePath, "new-file.txt")
 	os.WriteFile(newFilePath, []byte("new content"), 0644)
 

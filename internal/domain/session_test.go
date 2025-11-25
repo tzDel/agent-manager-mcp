@@ -27,8 +27,8 @@ func TestNewSession(t *testing.T) {
 		t.Errorf("WorktreePath() = %q, want %q", session.WorktreePath(), worktreePath)
 	}
 
-	if session.BranchName() != "session-test-session" {
-		t.Errorf("BranchName() = %q, want %q", session.BranchName(), "session-test-session")
+	if session.BranchName() != "orchestragent-test-session" {
+		t.Errorf("BranchName() = %q, want %q", session.BranchName(), "orchestragent-test-session")
 	}
 }
 

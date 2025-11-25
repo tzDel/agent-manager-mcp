@@ -112,7 +112,7 @@ cmd/
 4. **Simple Status Model**: Three session status values (`open`, `reviewed`, `merged`)
 5. **Clean Architecture**: Strict layer separation (domain → application → infrastructure)
 6. **Value Objects**: SessionID enforces validation rules at domain level
-
+ 
 ---
 
 # 3) Coding guidelines and conventions

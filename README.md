@@ -44,6 +44,10 @@ codex mcp add orchestragent-mcp -- "<path-to-binary>" -repo <path-to-repo>
 codex mcp list
 ```
 
+## Runtime flags
+- `-repo`: Path to the git repository (defaults to current working directory).
+- `-db`: Directory where the SQLite database should be created. Defaults to the current working directory; the database file is always named `.orchestragent-mcp.db`. Relative paths are resolved from the current working directory.
+
 ## Project Status
 
 Currently in development. See [docs/concept.md](docs/concept.md) for vision and roadmap.

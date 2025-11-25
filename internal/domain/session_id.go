@@ -31,9 +31,9 @@ func (sessionID SessionID) String() string {
 }
 
 func (sessionID SessionID) BranchName() string {
-	return "session-" + sessionID.value
+	return "orchestragent-" + sessionID.value
 }
 
 func (sessionID SessionID) WorktreeDirName() string {
-	return "session-" + sessionID.value
+	return "orchestragent-" + sessionID.value
 }

@@ -29,8 +29,8 @@ func TestCreateWorktreeUseCase_Execute_Success(t *testing.T) {
 		t.Errorf("SessionID = %q, want %q", response.SessionID, "test-session")
 	}
 
-	if response.BranchName != "session-test-session" {
-		t.Errorf("BranchName = %q, want %q", response.BranchName, "session-test-session")
+	if response.BranchName != "orchestragent-test-session" {
+		t.Errorf("BranchName = %q, want %q", response.BranchName, "orchestragent-test-session")
 	}
 
 	if response.Status != "open" {
@@ -243,7 +243,7 @@ func TestCreateWorktreeUseCase_BuildWorktreePath_ReturnsCorrectPath(t *testing.T
 	worktreePath := createWorktreeUseCase.buildWorktreePath(sessionID)
 
 	// assert
-	expectedPath := filepath.Join("/repo/root", ".worktrees", "session-test-session")
+	expectedPath := filepath.Join("/repo/root", ".worktrees", "orchestragent-test-session")
 	if worktreePath != expectedPath {
 		t.Errorf("buildWorktreePath() returned %q, want %q", worktreePath, expectedPath)
 	}
@@ -319,7 +319,7 @@ func TestCreateWorktreeUseCase_BuildResponse_ReturnsCorrectResponse(t *testing.T
 	sessionRepository := newMockSessionRepository()
 	createWorktreeUseCase := NewCreateWorktreeUseCase(gitOperations, sessionRepository, "/repo/root")
 	sessionID, _ := domain.NewSessionID("test-session")
-	session, _ := domain.NewSession(sessionID, "/repo/root/.worktrees/session-test-session")
+	session, _ := domain.NewSession(sessionID, "/repo/root/.worktrees/orchestragent-test-session")
 
 	// act
 	response := createWorktreeUseCase.buildResponse(session)
@@ -328,8 +328,8 @@ func TestCreateWorktreeUseCase_BuildResponse_ReturnsCorrectResponse(t *testing.T
 	if response.SessionID != "test-session" {
 		t.Errorf("buildResponse() SessionID = %q, want %q", response.SessionID, "test-session")
 	}
-	if response.BranchName != "session-test-session" {
-		t.Errorf("buildResponse() BranchName = %q, want %q", response.BranchName, "session-test-session")
+	if response.BranchName != "orchestragent-test-session" {
+		t.Errorf("buildResponse() BranchName = %q, want %q", response.BranchName, "orchestragent-test-session")
 	}
 	if response.Status != "open" {
 		t.Errorf("buildResponse() Status = %q, want %q", response.Status, "open")
